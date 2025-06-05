@@ -25,8 +25,23 @@ const std = @import("std");
 
 pub const AnyValue = @import("AnyValue.zig");
 
-pub fn compileError(comptime fmt: []const u8, comptime args: anytype) noreturn {
+pub inline fn compileError(comptime fmt: []const u8, comptime args: anytype) noreturn {
     @compileError(std.fmt.comptimePrint(fmt, args));
+}
+
+/// The purpose of this function is to consume less of the evaluation quota than the `std.mem.eql`
+/// implementation.
+pub inline fn eql(comptime T: type, comptime a: []const T, comptime b: []const T) bool {
+    comptime {
+        if (a.len != b.len) return false;
+
+        const V = @Vector(a.len, T);
+
+        const a_vec: *const V = @ptrCast(a);
+        const b_vec: *const V = @ptrCast(b);
+
+        return a_vec == b_vec;
+    }
 }
 
 test {
