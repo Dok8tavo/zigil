@@ -21,14 +21,38 @@
 // SOFTWARE.
 //
 
+value: *const anyopaque,
+type: type,
+
 const std = @import("std");
+const AnyValue = @This();
 
-pub const AnyValue = @import("AnyValue.zig");
-
-pub fn compileError(comptime fmt: []const u8, comptime args: anytype) noreturn {
-    @compileError(std.fmt.comptimePrint(fmt, args));
+pub fn from(comptime value: anytype) AnyValue {
+    return AnyValue{
+        .value = &value,
+        .type = @TypeOf(value),
+    };
 }
 
-test {
-    _ = AnyValue;
+pub fn get(comptime any_value: AnyValue) any_value.type {
+    const ptr: *const any_value.type = @ptrCast(@alignCast(any_value.value));
+    return ptr.*;
+}
+
+test AnyValue {
+    {
+        const integer: usize = 12;
+        const any_value = AnyValue.from(integer);
+        try std.testing.expectEqual(12, any_value.get());
+    }
+    {
+        const T = usize;
+        const any_value = AnyValue.from(T);
+        try std.testing.expectEqual(usize, any_value.get());
+    }
+    {
+        const comptime_integer = 100;
+        const any_value = AnyValue.from(comptime_integer);
+        try std.testing.expectEqual(100, any_value.get());
+    }
 }
