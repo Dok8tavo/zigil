@@ -39,6 +39,10 @@ pub fn get(comptime any_value: AnyValue) any_value.type {
     return ptr.*;
 }
 
+pub fn getTyped(comptime any_value: AnyValue, comptime T: type) ?T {
+    return if (any_value.type == T) any_value.get() orelse null;
+}
+
 test AnyValue {
     {
         const integer: usize = 12;
