@@ -30,6 +30,29 @@ const std = @import("std");
 const AnyValue = @import("AnyValue.zig");
 const Trait = @This();
 
+pub fn passCondition(comptime name: []const u8, comptime condition: fn (comptime type) bool) Trait {
+    const Impl = struct {
+        condition: fn (comptime type) bool,
+
+        pub fn diagnostic(comptime impl: @This(), comptime T: type) Diagnostic {
+            return if (impl.condition(T)) Diagnostic{
+                .type = T,
+                .trait = name,
+            } else Diagnostic{
+                .type = T,
+                .trait = name,
+                .error_code = error.False,
+            };
+        }
+    };
+
+    return .from(Impl{ .condition = condition });
+}
+
+pub fn from(comptime impl: anytype) Trait {
+    return Trait{ .impl = .from(impl) };
+}
+
 pub fn diagnostic(comptime t: Trait, comptime T: type) Diagnostic {
     // TODO: use a `Diagnostic` instance to simulate traits usage
     // TODO: check that the diagnostic does have `T` as its `.type` field!
@@ -81,9 +104,9 @@ pub const Diagnostic = struct {
             return try writer.print(
                 "{}trait {}success{}: The type `{}{s}{}` implements the trait `{}{s}{}`",
                 .{
-                    C.white, C.green,           C.white,
-                    C.cyan,  @typeName(d.type), C.cyan,
-                    C.cyan,  d.trait,           C.cyan,
+                    C.white,   C.green,           C.white,
+                    C.cyan,    @typeName(d.type), C.white,
+                    C.magenta, d.trait,           C.cyan,
                 },
             );
         };
