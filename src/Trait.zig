@@ -31,34 +31,7 @@ const AnyValue = @import("AnyValue.zig");
 const Diagnostic = @import("Diagnostic.zig");
 const Trait = @This();
 
-pub fn passCondition(comptime name: []const u8, comptime condition: fn (comptime type) bool) Trait {
-    const Impl = struct {
-        expect: ?[]const u8 = null,
-        status: ?[]const u8 = null,
-        repair: ?[]const u8 = null,
-
-        pub fn diagnostic(comptime impl: @This(), comptime T: type) Diagnostic {
-            return if (condition(T)) Diagnostic{
-                .type = T,
-                .trait = name,
-            } else Diagnostic{
-                .type = T,
-                .trait = name,
-                .error_code = error.False,
-                .expect = impl.expect,
-                .status = impl.status,
-                .repair = impl.repair,
-            };
-        }
-    };
-
-    return .from(Impl{ .condition = condition });
-}
-
-pub fn from(comptime impl: anytype) Trait {
-    return Trait{ .impl = .from(impl) };
-}
-
+// === Use Traits ===
 pub fn diagnostic(comptime t: Trait, comptime T: type) Diagnostic {
     // TODO: use a `Diagnostic` instance to simulate traits usage
     // TODO: check that the diagnostic does have `T` as its `.type` field!
@@ -82,4 +55,35 @@ pub fn check(comptime t: Trait, comptime T: type) bool {
 
 pub inline fn assert(comptime t: Trait, comptime T: type) void {
     if (!t.check(T)) @compileError(t.message(T));
+}
+
+// === Make Traits ===
+pub fn passCondition(comptime name: []const u8, comptime condition: fn (comptime type) bool) Trait {
+    const Impl = struct {
+        name: []const u8 = name,
+        condition: fn (comptime type) bool = condition,
+        expect: ?[]const u8 = null,
+        status: ?[]const u8 = null,
+        repair: ?[]const u8 = null,
+
+        pub fn diagnostic(comptime impl: @This(), comptime T: type) Diagnostic {
+            return if (impl.condition(T)) Diagnostic{
+                .type = T,
+                .trait = impl.name,
+            } else Diagnostic{
+                .type = T,
+                .trait = impl.name,
+                .error_code = error.False,
+                .expect = impl.expect,
+                .status = impl.status,
+                .repair = impl.repair,
+            };
+        }
+    };
+
+    return .from(Impl{ .condition = condition });
+}
+
+fn from(comptime impl: anytype) Trait {
+    return Trait{ .impl = .from(impl) };
 }
