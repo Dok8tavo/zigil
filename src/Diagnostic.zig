@@ -101,7 +101,7 @@ fn insertAtNewlines(comptime str: []const u8, comptime insert: []const u8) []con
     return new_str ++ str[last..];
 }
 
-pub fn Color(comptime use: bool) type {
+fn Color(comptime use: bool) type {
     return enum {
         black,
         red,

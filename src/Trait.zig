@@ -22,7 +22,7 @@
 //
 
 impl: AnyValue,
-use_colors: bool = true,
+color: bool = true,
 
 const root = @import("root.zig");
 const std = @import("std");
@@ -45,7 +45,7 @@ pub fn expect(comptime t: Trait, comptime T: type) anyerror!void {
 }
 
 pub fn message(comptime t: Trait, comptime T: type) []const u8 {
-    return std.fmt.comptimePrint(if (t.use_colors) "{}" else "{no-color}", .{t.diagnostic(T)});
+    return std.fmt.comptimePrint(if (t.color) "{}" else "{no-color}", .{t.diagnostic(T)});
 }
 
 pub fn check(comptime t: Trait, comptime T: type) bool {
@@ -58,32 +58,32 @@ pub inline fn assert(comptime t: Trait, comptime T: type) void {
 }
 
 // === Make Traits ===
-pub fn passCondition(comptime name: []const u8, comptime condition: fn (comptime type) bool) Trait {
-    const Impl = struct {
-        name: []const u8 = name,
-        condition: fn (comptime type) bool = condition,
-        expect: ?[]const u8 = null,
-        status: ?[]const u8 = null,
-        repair: ?[]const u8 = null,
-
-        pub fn diagnostic(comptime impl: @This(), comptime T: type) Diagnostic {
-            return if (impl.condition(T)) Diagnostic{
-                .type = T,
-                .trait = impl.name,
-            } else Diagnostic{
-                .type = T,
-                .trait = impl.name,
-                .error_code = error.False,
-                .expect = impl.expect,
-                .status = impl.status,
-                .repair = impl.repair,
-            };
-        }
-    };
-
-    return .from(Impl{ .condition = condition });
+pub fn pass(comptime name: []const u8, comptime condition: fn (comptime type) bool) Trait {
+    return .from(Pass{ .name = name, .condition = condition });
 }
+
+pub const Pass = struct {
+    name: []const u8,
+    condition: fn (comptime T: type) bool,
+    repair: ?[]const u8 = null,
+
+    pub fn diagnostic(comptime p: Pass, comptime T: type) Diagnostic {
+        const trait = fmt("pass({s})", .{p.name});
+        return if (p.condition(T)) Diagnostic{
+            .trait = trait,
+            .type = T,
+        } else Diagnostic{
+            .trait = trait,
+            .type = T,
+            .error_code = error.False,
+            .expect = fmt("Calling `{s}` on `{s}` must return `true`!", .{ @typeName(T), p.name }),
+            .repair = p.repair,
+        };
+    }
+};
 
 fn from(comptime impl: anytype) Trait {
     return Trait{ .impl = .from(impl) };
 }
+
+const fmt = std.fmt.comptimePrint;
