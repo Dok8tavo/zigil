@@ -24,6 +24,7 @@
 const std = @import("std");
 
 pub const AnyValue = @import("AnyValue.zig");
+pub const Trait = @import("Trait.zig");
 
 pub inline fn compileError(comptime fmt: []const u8, comptime args: anytype) noreturn {
     @compileError(std.fmt.comptimePrint(fmt, args));
@@ -37,8 +38,8 @@ pub inline fn eql(comptime T: type, comptime a: []const T, comptime b: []const T
 
         const V = @Vector(a.len, T);
 
-        const a_vec: *const V = @ptrCast(a);
-        const b_vec: *const V = @ptrCast(b);
+        const a_vec: *const V = @alignCast(@ptrCast(a));
+        const b_vec: *const V = @alignCast(@ptrCast(b));
 
         return a_vec == b_vec;
     }
@@ -46,4 +47,5 @@ pub inline fn eql(comptime T: type, comptime a: []const T, comptime b: []const T
 
 test {
     _ = AnyValue;
+    _ = Trait;
 }
