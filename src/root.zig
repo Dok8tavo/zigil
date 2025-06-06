@@ -24,6 +24,7 @@
 const std = @import("std");
 
 pub const AnyValue = @import("AnyValue.zig");
+pub const Diagnostic = @import("Diagnostic.zig");
 pub const Trait = @import("Trait.zig");
 
 pub inline fn compileError(comptime fmt: []const u8, comptime args: anytype) noreturn {
@@ -47,5 +48,6 @@ pub inline fn eql(comptime T: type, comptime a: []const T, comptime b: []const T
 
 test {
     _ = AnyValue;
+    _ = Diagnostic;
     _ = Trait;
 }

@@ -61,7 +61,6 @@ pub inline fn assert(comptime t: Trait, comptime T: type) void {
 pub fn pass(comptime name: []const u8, comptime condition: fn (comptime type) bool) Trait {
     return .from(Pass{ .name = name, .condition = condition });
 }
-
 pub const Pass = struct {
     name: []const u8,
     condition: fn (comptime T: type) bool,
@@ -78,6 +77,42 @@ pub const Pass = struct {
             .error_code = error.False,
             .expect = fmt("Calling `{s}` on `{s}` must return `true`!", .{ @typeName(T), p.name }),
             .repair = p.repair,
+        };
+    }
+};
+
+pub fn all(comptime traits: []const Trait) Trait {
+    return All{ .traits = traits };
+}
+pub const All = struct {
+    traits: []const Trait,
+
+    pub fn addMany(comptime a: *All, comptime others: []const Trait) void {
+        a.traits = a.traits ++ others;
+    }
+
+    pub fn addOne(comptime a: *All, comptime one: Trait) void {
+        a.traits = a.traits ++ &[_]Trait{one};
+    }
+
+    pub fn diagnostic(comptime a: All, comptime T: type) Diagnostic {
+        if (a.traits.len == 0) return Diagnostic{
+            .trait = "no_trait",
+            .type = T,
+        };
+
+        var name: []const u8 = "";
+
+        while (a.traits) |trait| {
+            const d = trait.diagnostic(T);
+            if (d.error_code != null)
+                return d;
+            name += d.trait ++ " & ";
+        }
+
+        return Diagnostic{
+            .trait = name[0 .. name.len - " & ".len],
+            .type = T,
         };
     }
 };
