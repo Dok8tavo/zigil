@@ -33,11 +33,7 @@ const expect_message = "The type must be a container, a type that can held decla
 
 pub fn diagnostic(comptime _: @This(), comptime T: type) Diagnostic {
     const info = @typeInfo(T);
-    const success = Diagnostic{
-        .type = T,
-        .trait = name,
-    };
-
+    const success = Diagnostic.default(T).withName(name);
     return switch (info) {
         .@"union", .@"enum", .@"opaque" => success,
         .@"struct" => |@"struct"| if (!@"struct".is_tuple) success else fail(
@@ -125,6 +121,6 @@ fn fail(
         .expect = expect_message,
         .status = fmt("The type is a {s}, and can't held declarations", .{info}),
         .repair = repair,
-        .trait = name,
+        .name = name,
     };
 }

@@ -24,7 +24,7 @@
 /// It's type that's expected to implement the trait.
 type: type,
 /// It's name of the trait, a snake_cased description of the type that implements it.
-trait: []const u8 = "anonymous_trait",
+name: []const u8 = "anonymous_trait",
 /// The error code shortly describes the issue preventing the type to implement the trait.
 error_code: ?anyerror = null,
 /// This describes what's expected of a type that implements the trait.
@@ -38,6 +38,76 @@ const std = @import("std");
 const root = @import("../root.zig");
 
 const Diagnostic = @This();
+
+pub fn default(comptime T: type) Diagnostic {
+    return Diagnostic{ .type = T };
+}
+
+pub fn withType(comptime d: Diagnostic, comptime T: type) Diagnostic {
+    return Diagnostic{
+        .type = T,
+        .name = d.name,
+        .error_code = d.error_code,
+        .expect = d.expect,
+        .repair = d.repair,
+        .status = d.status,
+    };
+}
+
+pub fn withName(comptime d: Diagnostic, comptime n: []const u8) Diagnostic {
+    return Diagnostic{
+        .type = d.type,
+        .error_code = d.error_code,
+        .expect = d.expect,
+        .repair = d.repair,
+        .status = d.status,
+        .name = n,
+    };
+}
+
+pub fn withErrorCode(comptime d: Diagnostic, comptime error_code: ?anyerror) Diagnostic {
+    return Diagnostic{
+        .error_code = error_code,
+        .expect = d.expect,
+        .name = d.name,
+        .repair = d.repair,
+        .status = d.status,
+        .type = d.type,
+    };
+}
+
+pub fn withRepair(comptime d: Diagnostic, comptime repair: ?[]const u8) Diagnostic {
+    return Diagnostic{
+        .error_code = d.error_code,
+        .expect = d.expect,
+        .name = d.name,
+        .repair = repair,
+        .status = d.status,
+        .type = d.type,
+    };
+}
+
+pub fn withStatus(comptime d: Diagnostic, comptime status: ?[]const u8) Diagnostic {
+    return Diagnostic{
+        .error_code = d.error_code,
+        .expect = d.expect,
+        .name = d.name,
+        .repair = d.repair,
+        .status = status,
+        .type = d.type,
+    };
+}
+
+pub fn withExpect(comptime d: Diagnostic, comptime expect: ?[]const u8) Diagnostic {
+    return Diagnostic{
+        .error_code = d.error_code,
+        .expect = expect,
+        .name = d.name,
+        .repair = d.repair,
+        .status = d.status,
+        .type = d.type,
+    };
+}
 
 pub fn format(
     comptime d: Diagnostic,
@@ -53,7 +123,7 @@ pub fn format(
             .{
                 C.white,   C.green,           C.white,
                 C.cyan,    @typeName(d.type), C.white,
-                C.magenta, d.trait,           C.cyan,
+                C.magenta, d.name,            C.cyan,
             },
         );
     };
@@ -63,7 +133,7 @@ pub fn format(
         .{
             C.white, C.red,     @errorName(error_code),
             C.white, C.cyan,    @typeName(d.type),
-            C.white, C.magenta, d.trait,
+            C.white, C.magenta, d.name,
             C.white,
         },
     );

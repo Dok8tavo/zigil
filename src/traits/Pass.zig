@@ -33,15 +33,10 @@ const Diagnostic = @import("Diagnostic.zig");
 const fmt = std.fmt.comptimePrint;
 
 pub fn diagnostic(comptime p: Pass, comptime T: type) Diagnostic {
-    const trait = fmt("pass({s})", .{p.name});
-    return if (p.condition(T)) Diagnostic{
-        .trait = trait,
-        .type = T,
-    } else Diagnostic{
-        .trait = trait,
-        .type = T,
-        .error_code = error.False,
-        .expect = fmt("Calling `{s}` on `{s}` must return `true`!", .{ @typeName(T), p.name }),
-        .repair = p.repair,
-    };
+    const name = fmt("pass({s})", .{p.name});
+    return if (p.condition(T)) Diagnostic.default(T).withName(name) else Diagnostic.default(T)
+        .withName(name)
+        .withErrorCode(error.False)
+        .withExpect(fmt("Calling `{s}` on `{s}` must return `true`!", .{ @typeName(T), p.name }))
+        .withRepair(p.repair);
 }
