@@ -111,46 +111,38 @@ pub fn withExpect(comptime d: Diagnostic, comptime expect: ?[]const u8) Diagnost
 
 pub fn format(
     comptime d: Diagnostic,
-    comptime fmt: []const u8,
+    comptime _: []const u8,
     _: std.fmt.FormatOptions,
     writer: anytype,
 ) !void {
-    const use = !root.eql(u8, fmt, "no-color");
-    const C = Color(use);
     const error_code = if (d.error_code) |error_code| error_code else {
         return try writer.print(
-            "{}trait {}success{}: The type `{}{s}{}` implements the trait `{}{s}{}`",
+            "trait success: The type `{s}` implements the trait `{s}`",
             .{
-                C.white,   C.green,           C.white,
-                C.cyan,    @typeName(d.type), C.white,
-                C.magenta, d.name,            C.cyan,
+                @typeName(d.type),
+                d.name,
             },
         );
     };
 
     const headline = std.fmt.comptimePrint(
-        "{}trait error `{}{s}{}`: The type `{}{s}{}` doesn't implement the trait `{}{s}{}`!",
-        .{
-            C.white, C.red,     @errorName(error_code),
-            C.white, C.cyan,    @typeName(d.type),
-            C.white, C.magenta, d.name,
-            C.white,
-        },
+        "trait error `{s}`: The type `{s}` doesn't implement the trait `{s}`!",
+        .{ @errorName(error_code), @typeName(d.type), d.name },
     );
 
     const expect_line = if (d.expect) |expect_message| std.fmt.comptimePrint(
-        "\n    [{}expect{}]:\n{s}",
-        .{ C.cyan, C.white, insertAtNewlines(expect_message, " " ** 8) },
+        "\n    [expect]:\n{s}",
+        .{insertAtNewlines(expect_message, " " ** 8)},
     ) else "";
 
     const status_line = if (d.status) |status_message| std.fmt.comptimePrint(
-        "\n    [{}status{}]:\n{s}",
-        .{ C.red, C.white, insertAtNewlines(status_message, " " ** 8) },
+        "\n    [status]:\n{s}",
+        .{insertAtNewlines(status_message, " " ** 8)},
     ) else "";
 
     const repair_line = if (d.repair) |repair_message| std.fmt.comptimePrint(
-        "\n    [{}repair{}]:\n{s}",
-        .{ C.green, C.white, insertAtNewlines(repair_message, " " ** 8) },
+        "\n    [repair]:\n{s}",
+        .{insertAtNewlines(repair_message, " " ** 8)},
     ) else "";
 
     try writer.writeAll(headline ++ expect_line ++ status_line ++ repair_line);
@@ -169,39 +161,4 @@ fn insertAtNewlines(comptime str: []const u8, comptime insert: []const u8) []con
     }
 
     return new_str ++ str[last..];
-}
-
-fn Color(comptime use: bool) type {
-    return enum {
-        black,
-        red,
-        green,
-        yellow,
-        blue,
-        magenta,
-        cyan,
-        white,
-
-        pub fn format(
-            comptime c: Color(use),
-            comptime _: []const u8,
-            _: std.fmt.FormatOptions,
-            writer: anytype,
-        ) !void {
-            if (use) try writer.writeAll(c.esc());
-        }
-
-        fn esc(comptime c: Color(use)) []const u8 {
-            return "\x1B[" ++ switch (c) {
-                .black => "30",
-                .red => "31",
-                .green => "32",
-                .yellow => "33",
-                .blue => "34",
-                .magenta => "35",
-                .cyan => "36",
-                .white => "37",
-            } ++ "m";
-        }
-    };
 }

@@ -42,11 +42,11 @@ pub fn diagnostic(comptime a: All, comptime T: type) Diagnostic {
 
     var name: []const u8 = "";
 
-    while (a.traits) |trait| {
+    for (a.traits) |trait| {
         const d = trait.diagnostic(T);
         if (d.error_code != null)
             return d;
-        name += d.trait ++ " & ";
+        name = d.name ++ " & ";
     }
 
     return default.withName(name[0 .. name.len - " & ".len]);

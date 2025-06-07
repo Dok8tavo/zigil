@@ -24,10 +24,10 @@
 name: []const u8,
 
 const Diagnostic = @import("Diagnostic.zig");
-const HasDecl = @This();
+const HasDeclaration = @This();
 const Trait = @import("Trait.zig");
 
-pub fn diagnostic(comptime has_decl: HasDecl, comptime T: type) Diagnostic {
+pub fn diagnostic(comptime has_decl: HasDeclaration, comptime T: type) Diagnostic {
     const trait_name = has_decl.traitName();
     const default = Diagnostic.default(T).withName(trait_name);
     if (!Trait.is_container.check(T))
@@ -40,6 +40,6 @@ pub fn diagnostic(comptime has_decl: HasDecl, comptime T: type) Diagnostic {
             .withExpect("The type must declare a public `" ++ has_decl.name ++ "` declaration!");
 }
 
-fn traitName(comptime has_decl: HasDecl) []const u8 {
+fn traitName(comptime has_decl: HasDeclaration) []const u8 {
     return "has_decl(" ++ has_decl.name ++ ")";
 }

@@ -40,7 +40,7 @@ pub fn diagnostic(comptime _: @This(), comptime T: type) Diagnostic {
             T,
             "a tuple",
             error.IsTuple,
-            "Consider naming it's elements to make a struct instead.",
+            "Consider naming its elements to make a struct instead.",
         ),
         .enum_literal => fail(T, "the enum literal type", error.IsEnumLiteral, null),
         .vector => fail(T, "a vector type", error.IsVector, null),
@@ -119,7 +119,7 @@ fn fail(
         .type = T,
         .error_code = error_code,
         .expect = expect_message,
-        .status = fmt("The type is a {s}, and can't held declarations", .{info}),
+        .status = fmt("The type is {s}, and can't held declarations.", .{info}),
         .repair = repair,
         .name = name,
     };
