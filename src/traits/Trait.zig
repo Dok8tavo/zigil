@@ -24,37 +24,41 @@
 impl: AnyValue,
 color: bool = true,
 
-const root = @import("root.zig");
+const root = @import("../root.zig");
 const std = @import("std");
 
-const AnyValue = @import("AnyValue.zig");
+const AnyValue = @import("../AnyValue.zig");
 const Diagnostic = @import("Diagnostic.zig");
 const Trait = @This();
 
 // === Use Traits ===
-pub fn diagnostic(comptime t: Trait, comptime T: type) Diagnostic {
+pub inline fn diagnostic(comptime t: Trait, comptime T: type) Diagnostic {
     // TODO: use a `Diagnostic` instance to simulate traits usage
     // TODO: check that the diagnostic does have `T` as its `.type` field!
-    return t.impl.get().diagnostic(T);
+    comptime return t.impl.get().diagnostic(T);
 }
 
-pub fn expect(comptime t: Trait, comptime T: type) anyerror!void {
+pub inline fn expect(comptime t: Trait, comptime T: type) anyerror!void {
     // TODO: check that the diagnostic does have `T` as its `.type` field!
-    if (t.diagnostic(T).error_code) |error_code|
-        return error_code;
+    comptime {
+        if (t.diagnostic(T).error_code) |error_code|
+            return error_code;
+    }
 }
 
-pub fn message(comptime t: Trait, comptime T: type) []const u8 {
-    return std.fmt.comptimePrint(if (t.color) "{}" else "{no-color}", .{t.diagnostic(T)});
+pub inline fn message(comptime t: Trait, comptime T: type) []const u8 {
+    comptime return std.fmt.comptimePrint(if (t.color) "{}" else "{no-color}", .{t.diagnostic(T)});
 }
 
-pub fn check(comptime t: Trait, comptime T: type) bool {
+pub inline fn check(comptime t: Trait, comptime T: type) bool {
     // TODO: check that the diagnostic does have `T` as its `.type` field!
-    return t.diagnostic(T).error_code == null;
+    comptime return t.diagnostic(T).error_code == null;
 }
 
 pub inline fn assert(comptime t: Trait, comptime T: type) void {
-    if (!t.check(T)) @compileError(t.message(T));
+    comptime {
+        if (!t.check(T)) @compileError(t.message(T));
+    }
 }
 
 // === Make Traits ===
@@ -116,6 +120,11 @@ pub const All = struct {
         };
     }
 };
+
+// === Specific Traits ===
+pub const is_container = Trait.from(@import("is_container.zig"){});
+
+// === Utils ===
 
 fn from(comptime impl: anytype) Trait {
     return Trait{ .impl = .from(impl) };

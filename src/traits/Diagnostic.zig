@@ -35,7 +35,7 @@ status: ?[]const u8 = null,
 repair: ?[]const u8 = null,
 
 const std = @import("std");
-const root = @import("root.zig");
+const root = @import("../root.zig");
 
 const Diagnostic = @This();
 

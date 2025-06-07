@@ -24,8 +24,8 @@
 const std = @import("std");
 
 pub const AnyValue = @import("AnyValue.zig");
-pub const Diagnostic = @import("Diagnostic.zig");
-pub const Trait = @import("Trait.zig");
+pub const Diagnostic = @import("traits/Diagnostic.zig");
+pub const Trait = @import("traits/Trait.zig");
 
 pub inline fn compileError(comptime fmt: []const u8, comptime args: anytype) noreturn {
     @compileError(std.fmt.comptimePrint(fmt, args));
