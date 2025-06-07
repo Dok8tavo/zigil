@@ -69,7 +69,12 @@ pub fn pass(comptime name: []const u8, comptime condition: fn (comptime type) bo
 
 pub const All = @import("All.zig");
 pub fn all(comptime traits: []const Trait) Trait {
-    return All{ .traits = traits };
+    return .from(All{ .traits = traits });
+}
+
+pub const HasDecl = @import("HasDecl.zig");
+pub fn hasDecl(comptime decl_name: []const u8) Trait {
+    return .from(HasDecl{ .name = decl_name });
 }
 
 // === Specific Traits ===

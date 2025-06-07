@@ -35,7 +35,9 @@ pub fn diagnostic(comptime has_decl: HasDecl, comptime T: type) Diagnostic {
     return if (@hasDecl(T, has_decl.name))
         default
     else
-        default.withExpect("The type must declare a public `" ++ has_decl.name ++ "` declaration!");
+        default
+            .withErrorCode(error.MissingDeclaration)
+            .withExpect("The type must declare a public `" ++ has_decl.name ++ "` declaration!");
 }
 
 fn traitName(comptime has_decl: HasDecl) []const u8 {
