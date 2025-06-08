@@ -28,6 +28,6 @@ const Diagnostic = @import("Diagnostic.zig");
 pub fn diagnostic(comptime _: @This(), comptime T: type) Diagnostic {
     return Diagnostic{
         .type = T,
-        .name = "top",
+        .name = "is-a-type",
     };
 }

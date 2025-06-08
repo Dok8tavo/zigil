@@ -130,7 +130,7 @@ test hasDeclaration {
 }
 
 // === Specific Traits ===
-pub const top = Trait.from(@import("top.zig"));
+pub const is_a_type = Trait.from(@import("is_a_type.zig"));
 pub const is_container = Trait.from(@import("is_container.zig"){});
 test is_container {
     try is_container.expect(struct {});
@@ -145,7 +145,6 @@ test is_container {
 }
 
 // === Utils ===
-
 fn from(comptime impl: anytype) Trait {
     return Trait{ .impl = .from(impl) };
 }
