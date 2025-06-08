@@ -137,8 +137,20 @@ test hasDeclarationThat {
         pub const container = std.ArrayListUnmanaged(u8){};
     });
 
-    try expectError(error.IsPointer, hasDeclarationThat("string", .is_container).expect(struct {
-        pub const string = "Hello";
+    try expectError(error.IsFunction, hasDeclarationThat("string", .is_a_type).expect(fn () void));
+    try expectError(
+        error.MissingDeclaration,
+        hasDeclarationThat("missing_declaration", .is_container)
+            .expect(struct {
+            pub const not_the_declaration = "Sorry!";
+        }),
+    );
+    try expectError(error.False, hasDeclarationThat("Int", .pass("is_int", struct {
+        pub fn isInt(comptime T: type) bool {
+            return @typeInfo(T) == .int;
+        }
+    }.isInt)).expect(struct {
+        pub const Int = f32;
     }));
 }
 
