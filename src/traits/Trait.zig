@@ -33,22 +33,15 @@ const Trait = @This();
 // === Use Traits ===
 pub inline fn diagnostic(comptime t: Trait, comptime T: type) Diagnostic {
     // TODO: use a `Diagnostic` instance to simulate traits usage
-    // TODO: check that the diagnostic does have `T` as its `.type` field!
     comptime return t.impl.get().diagnostic(T);
 }
 
 pub inline fn expect(comptime t: Trait, comptime T: type) anyerror!void {
-    // TODO: check that the diagnostic does have `T` as its `.type` field!
-    comptime {
-        if (t.diagnostic(T).error_code) |error_code|
-            return error_code;
-    }
+    comptime if (t.diagnostic(T).error_code) |error_code| return error_code;
 }
 
 pub inline fn expectError(comptime t: Trait, comptime T: type, comptime e: anyerror) anyerror!void {
-    comptime {
-        try std.testing.expectError(e, t.expect(T));
-    }
+    comptime try std.testing.expectError(e, t.expect(T));
 }
 
 pub inline fn message(comptime t: Trait, comptime T: type) []const u8 {
@@ -56,14 +49,11 @@ pub inline fn message(comptime t: Trait, comptime T: type) []const u8 {
 }
 
 pub inline fn check(comptime t: Trait, comptime T: type) bool {
-    // TODO: check that the diagnostic does have `T` as its `.type` field!
     comptime return t.diagnostic(T).error_code == null;
 }
 
 pub inline fn assert(comptime t: Trait, comptime T: type) void {
-    comptime {
-        if (!t.check(T)) @compileError(t.message(T));
-    }
+    comptime if (!t.check(T)) @compileError(t.message(T));
 }
 
 // === Make Traits ===

@@ -34,7 +34,7 @@ pub fn diagnostic(comptime has_decl: HasDeclaration, comptime T: type) Diagnosti
     if (!Trait.is_container.check(T))
         return Trait.is_container.diagnostic(T).withName(trait_name);
     return if (@hasDecl(T, has_decl.name))
-        has_decl.trait.diagnostic(@TypeOf(@field(T, has_decl.name))).withName(has_decl.traitName())
+        has_decl.trait.diagnostic(@TypeOf(@field(T, has_decl.name)))
     else
         default
             .withErrorCode(error.MissingDeclaration)
