@@ -22,6 +22,7 @@
 //
 
 name: []const u8,
+trait: Trait = .is_a_type,
 
 const Diagnostic = @import("Diagnostic.zig");
 const HasDeclaration = @This();
@@ -33,7 +34,7 @@ pub fn diagnostic(comptime has_decl: HasDeclaration, comptime T: type) Diagnosti
     if (!Trait.is_container.check(T))
         return Trait.is_container.diagnostic(T).withName(trait_name);
     return if (@hasDecl(T, has_decl.name))
-        default
+        has_decl.trait.diagnostic(@TypeOf(@field(T, has_decl.name))).withName(has_decl.traitName())
     else
         default
             .withErrorCode(error.MissingDeclaration)

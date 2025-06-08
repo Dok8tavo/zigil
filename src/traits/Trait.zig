@@ -116,11 +116,11 @@ test hasDeclaration {
     });
 
     try hasDeclaration("again").expect(opaque {
-        pub var again = null;
+        pub const again = null;
     });
 
     try hasDeclaration("the last one").expect(union {
-        pub const @"the last one" = unreachable;
+        pub const @"the last one" = "Hello";
     });
 
     try expectError(error.IsTuple, hasDeclaration("").expect(struct { u32 }));
@@ -129,8 +129,21 @@ test hasDeclaration {
     }));
 }
 
+pub fn hasDeclarationThat(comptime decl_name: []const u8, comptime that: Trait) Trait {
+    return .from(HasDeclaration{ .name = decl_name, .trait = that });
+}
+test hasDeclarationThat {
+    try hasDeclarationThat("container", .is_container).expect(struct {
+        pub const container = std.ArrayListUnmanaged(u8){};
+    });
+
+    try expectError(error.IsPointer, hasDeclarationThat("string", .is_container).expect(struct {
+        pub const string = "Hello";
+    }));
+}
+
 // === Specific Traits ===
-pub const is_a_type = Trait.from(@import("is_a_type.zig"));
+pub const is_a_type = Trait.from(@import("is_a_type.zig"){});
 pub const is_container = Trait.from(@import("is_container.zig"){});
 test is_container {
     try is_container.expect(struct {});
