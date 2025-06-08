@@ -38,7 +38,7 @@ pub fn addOne(comptime a: *All, comptime one: Trait) void {
 pub fn diagnostic(comptime a: All, comptime T: type) Diagnostic {
     const default = Diagnostic.default(T);
     if (a.traits.len == 0)
-        return default.withName("no trait");
+        return default.withName("no-trait");
 
     var name: []const u8 = "";
 
@@ -46,8 +46,8 @@ pub fn diagnostic(comptime a: All, comptime T: type) Diagnostic {
         const d = trait.diagnostic(T);
         if (d.error_code != null)
             return d;
-        name = d.name ++ " & ";
+        name = d.name ++ ", ";
     }
 
-    return default.withName(name[0 .. name.len - " & ".len]);
+    return default.withName("all[" ++ name[0 .. name.len - ", ".len] ++ "]");
 }

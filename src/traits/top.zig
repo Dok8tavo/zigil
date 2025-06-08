@@ -21,25 +21,13 @@
 // SOFTWARE.
 //
 
-name: []const u8,
+const std = @import("std");
 
 const Diagnostic = @import("Diagnostic.zig");
-const HasDeclaration = @This();
-const Trait = @import("Trait.zig");
 
-pub fn diagnostic(comptime has_decl: HasDeclaration, comptime T: type) Diagnostic {
-    const trait_name = has_decl.traitName();
-    const default = Diagnostic.default(T).withName(trait_name);
-    if (!Trait.is_container.check(T))
-        return Trait.is_container.diagnostic(T).withName(trait_name);
-    return if (@hasDecl(T, has_decl.name))
-        default
-    else
-        default
-            .withErrorCode(error.MissingDeclaration)
-            .withExpect("The type must declare a public `" ++ has_decl.name ++ "` declaration!");
-}
-
-fn traitName(comptime has_decl: HasDeclaration) []const u8 {
-    return "has-declaration[" ++ has_decl.name ++ "]";
+pub fn diagnostic(comptime _: @This(), comptime T: type) Diagnostic {
+    return Diagnostic{
+        .type = T,
+        .name = "top",
+    };
 }

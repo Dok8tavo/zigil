@@ -23,8 +23,8 @@
 
 /// It's type that's expected to implement the trait.
 type: type,
-/// It's name of the trait, a snake_cased description of the type that implements it.
-name: []const u8 = "anonymous_trait",
+/// It's name of the trait, a kebab-cased description of the type that implements it.
+name: []const u8 = "anonymous-trait",
 /// The error code shortly describes the issue preventing the type to implement the trait.
 error_code: ?anyerror = null,
 /// This describes what's expected of a type that implements the trait.

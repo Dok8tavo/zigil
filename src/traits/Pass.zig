@@ -33,7 +33,7 @@ const Diagnostic = @import("Diagnostic.zig");
 const fmt = std.fmt.comptimePrint;
 
 pub fn diagnostic(comptime p: Pass, comptime T: type) Diagnostic {
-    const name = fmt("pass({s})", .{p.name});
+    const name = fmt("pass[{s}]", .{p.name});
     return if (p.condition(T)) Diagnostic.default(T).withName(name) else Diagnostic.default(T)
         .withName(name)
         .withErrorCode(error.False)

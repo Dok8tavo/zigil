@@ -28,7 +28,7 @@ const Trait = @import("Trait.zig");
 
 const fmt = std.fmt.comptimePrint;
 
-const name = "is_container";
+const name = "is-container";
 const expect_message = "The type must be a container, a type that can held declarations.";
 
 pub fn diagnostic(comptime _: @This(), comptime T: type) Diagnostic {
