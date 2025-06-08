@@ -45,6 +45,12 @@ pub inline fn expect(comptime t: Trait, comptime T: type) anyerror!void {
     }
 }
 
+pub inline fn expectError(comptime t: Trait, comptime T: type, comptime e: anyerror) anyerror!void {
+    comptime {
+        try std.testing.expectError(e, t.expect(T));
+    }
+}
+
 pub inline fn message(comptime t: Trait, comptime T: type) []const u8 {
     comptime return std.fmt.comptimePrint("{}", .{t.diagnostic(T)});
 }
@@ -76,8 +82,8 @@ test pass {
     try is_32_bytes.expect([16]u16);
     try is_32_bytes.expect(struct { u256 });
 
-    try expectError(error.False, is_32_bytes.expect([31]u8));
-    try expectError(error.False, is_32_bytes.expect(void));
+    try is_32_bytes.expectError([31]u8, error.False);
+    try is_32_bytes.expectError(void, error.False);
 }
 
 pub const All = @import("All.zig");
@@ -98,8 +104,8 @@ test all {
     try is_int_less_than_32.expect(u32);
     try is_int_less_than_32.expect(i8);
 
-    try expectError(error.False, is_int_less_than_32.expect(u64));
-    try expectError(error.False, is_int_less_than_32.expect(struct { u8 }));
+    try is_int_less_than_32.expectError(u64, error.False);
+    try is_int_less_than_32.expectError(struct { u8 }, error.False);
 }
 
 pub const HasDeclaration = @import("HasDeclaration.zig");
@@ -123,10 +129,10 @@ test hasDeclaration {
         pub const @"the last one" = "Hello";
     });
 
-    try expectError(error.IsTuple, hasDeclaration("").expect(struct { u32 }));
-    try expectError(error.MissingDeclaration, hasDeclaration("nope").expect(struct {
+    try hasDeclaration("").expectError(struct { u32 }, error.IsTuple);
+    try hasDeclaration("nope").expectError(struct {
         const is_nope = false;
-    }));
+    }, error.MissingDeclaration);
 }
 
 pub fn hasDeclarationThat(comptime decl_name: []const u8, comptime that: Trait) Trait {
@@ -137,21 +143,18 @@ test hasDeclarationThat {
         pub const container = std.ArrayListUnmanaged(u8){};
     });
 
-    try expectError(error.IsFunction, hasDeclarationThat("string", .is_a_type).expect(fn () void));
-    try expectError(
-        error.MissingDeclaration,
-        hasDeclarationThat("missing_declaration", .is_container)
-            .expect(struct {
-            pub const not_the_declaration = "Sorry!";
-        }),
-    );
-    try expectError(error.False, hasDeclarationThat("Int", .pass("is_int", struct {
+    try hasDeclarationThat("string", .is_a_type).expectError(fn () void, error.IsFunction);
+    try hasDeclarationThat("missing_declaration", .is_container)
+        .expectError(struct {
+        pub const not_the_declaration = "Sorry!";
+    }, error.MissingDeclaration);
+    try hasDeclarationThat("Int", .pass("is_int", struct {
         pub fn isInt(comptime T: type) bool {
             return @typeInfo(T) == .int;
         }
-    }.isInt)).expect(struct {
+    }.isInt)).expectError(struct {
         pub const Int = f32;
-    }));
+    }, error.False);
 }
 
 // === Specific Traits ===
@@ -163,10 +166,10 @@ test is_container {
     try is_container.expect(enum {});
     try is_container.expect(opaque {});
 
-    try expectError(error.IsTuple, is_container.expect(struct { u8 }));
-    try expectError(error.IsInt, is_container.expect(u8));
-    try expectError(error.IsVoid, is_container.expect(void));
-    try expectError(error.IsPointer, is_container.expect(*struct {}));
+    try is_container.expectError(struct { u8 }, error.IsTuple);
+    try is_container.expectError(u8, error.IsInt);
+    try is_container.expectError(void, error.IsVoid);
+    try is_container.expectError(*struct {}, error.IsPointer);
 }
 
 // === Utils ===
@@ -174,5 +177,4 @@ fn from(comptime impl: anytype) Trait {
     return Trait{ .impl = .from(impl) };
 }
 
-const expectError = std.testing.expectError;
 const fmt = std.fmt.comptimePrint;
