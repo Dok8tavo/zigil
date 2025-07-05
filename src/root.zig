@@ -23,31 +23,103 @@
 
 const std = @import("std");
 
-pub const AnyValue = @import("AnyValue.zig");
-pub const Diagnostic = @import("traits/Diagnostic.zig");
 pub const Trait = @import("traits/Trait.zig");
 
-pub inline fn compileError(comptime fmt: []const u8, comptime args: anytype) noreturn {
-    @compileError(std.fmt.comptimePrint(fmt, args));
+pub const fmt = std.fmt.comptimePrint;
+
+pub inline fn compileError(comptime format: []const u8, comptime args: anytype) noreturn {
+    @compileError(std.fmt.comptimePrint(format, args));
 }
+
+pub const Comptype = struct {
+    type: type,
+    value: *const anyopaque,
+
+    pub fn get(comptime c: Comptype, comptime t: Trait) c.type {
+        t.assert(c.type);
+        comptime return @ptrCast(@alignCast(c.value));
+    }
+
+    pub fn getOrErr(comptime c: Comptype, comptime t: Trait) anyerror!c.type {
+        try t.expect(c.type);
+        return c.type;
+    }
+
+    pub fn getOrNull(comptime c: Comptype, comptime t: Trait) ?c.type {
+        return if (t.check(c.type)) c.type else null;
+    }
+
+    pub fn from(comptime anyvalue: anytype) Comptype {
+        comptime return .{
+            .type = @TypeOf(anyvalue.*),
+            .value = anyvalue,
+        };
+    }
+};
 
 /// The purpose of this function is to consume less of the evaluation quota than the `std.mem.eql`
 /// implementation.
 pub inline fn eql(comptime T: type, comptime a: []const T, comptime b: []const T) bool {
     comptime {
         if (a.len != b.len) return false;
+        if (a.ptr == b.ptr) return true;
 
         const V = @Vector(a.len, T);
 
         const a_vec: *const V = @alignCast(@ptrCast(a));
         const b_vec: *const V = @alignCast(@ptrCast(b));
 
-        return a_vec == b_vec;
+        return @reduce(.And, @as(V, a_vec.*) == @as(V, b_vec.*));
     }
+}
+test eql {
+    try std.testing.expect(comptime eql(u8, "Hello", "Hello"));
+    try std.testing.expect(!comptime eql(u8, "Goodbye", "Tschüss!"));
+}
+
+pub fn Range(comptime fold: enum { inner, outer }) type {
+    return struct {
+        // first <= last
+        first: ?comptime_int = null,
+        last: ?comptime_int = null,
+
+        pub fn from(comptime int: comptime_int) Range(fold) {
+            comptime return switch (fold) {
+                .inner => .{ .first = int },
+                .outer => .{ .last = int },
+            };
+        }
+
+        pub fn until(comptime int: comptime_int) Range(fold) {
+            comptime return switch (fold) {
+                .inner => .{ .last = int },
+                .outer => .{ .first = int },
+            };
+        }
+
+        pub fn range(comptime a: comptime_int, comptime b: comptime_int) Range(fold) {
+            comptime return .{
+                .first = @min(a, b),
+                .last = @max(a, b),
+            };
+        }
+
+        pub fn has(comptime r: Range(fold), comptime a: comptime_int) bool {
+            comptime {
+                if (fold == .outer)
+                    return !(Range(.inner){ .first = r.first, .last = r.last }).has(a);
+                if (r.first) |first|
+                    if (a < first)
+                        return false;
+                if (r.last) |last|
+                    if (last < a)
+                        return false;
+                return true;
+            }
+        }
+    };
 }
 
 test {
-    _ = AnyValue;
-    _ = Diagnostic;
     _ = Trait;
 }

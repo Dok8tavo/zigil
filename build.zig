@@ -38,10 +38,11 @@ pub fn build(b: *std.Build) void {
 
     if (b.args) |args| test_run.addArgs(args);
 
+    const lib = b.addLibrary(.{ .name = "zigil", .root_module = mod });
     const doc = b.addInstallDirectory(.{
         .install_dir = .prefix,
         .install_subdir = "doc",
-        .source_dir = test_exe.getEmittedDocs(),
+        .source_dir = lib.getEmittedDocs(),
     });
 
     const test_step = b.step("test", "Build & Run the tests");
