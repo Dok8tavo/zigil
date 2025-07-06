@@ -15,7 +15,7 @@ is_float_vector.assert(SomeType);
 If the type fails to satisfy the conditions, the `assert` function will emit a
 compile error:
 
-```zig
+```
 error: [trait trace] The type `@Vector(8, u8)` is required to satisfy the trait `is-vector[child => is-float]`.
                               The type must be a vector whose child satisfy the trait is-float.
                           [trait trace] The type `u8` is required to satisfy the trait `is-float`.

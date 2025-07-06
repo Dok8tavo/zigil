@@ -383,6 +383,50 @@ test isFunction {
     try has_int_param.expectError(fn (f32) void, error.IsFloat);
 }
 
+const pointers = @import("impl/pointers.zig");
+pub fn isPointer(comptime o: pointers.Options) z.Trait {
+    return fromResultFn(pointers.is, .{o});
+}
+test isPointer {
+    try isPointer(.{}).expect([]const u8);
+    try isPointer(.{}).expect(*i32);
+
+    const is_slice = isPointer(.{ .size = .slice });
+    try is_slice.expect([]usize);
+    try is_slice.expect([:true]volatile bool);
+    try is_slice.expectError(*i32, error.WrongSize);
+
+    const is_allowzero = isPointer(.{ .is_allowzero = true });
+    try is_allowzero.expect(*allowzero anyopaque);
+    try is_allowzero.expectError(*f64, error.PointerForbidZero);
+
+    const is_const = isPointer(.{ .is_const = true });
+    try is_const.expect(*const i32);
+    try is_const.expectError(*i32, error.PointerToVar);
+
+    const no_volatile = isPointer(.{ .is_volatile = false });
+    try no_volatile.expect([*c]const f16);
+    try no_volatile.expectError([*]volatile isize, error.PointerIsVolatile);
+
+    const natural_aligned = isPointer(.{ .alignment = .natural });
+    try natural_aligned.expect(*i32);
+    try natural_aligned.expect(*align(1) u8);
+    try natural_aligned.expectError(*align(1) i32, error.WrongAlignment);
+
+    const to_struct = isPointer(.{ .child = .isStruct(.{}) });
+    try to_struct.expect(*struct {});
+    try to_struct.expectError(*union {}, error.IsUnion);
+
+    const with_sentinel = isPointer(.{ .has_sentinel = true });
+    try with_sentinel.expect([*:0]u8);
+    try with_sentinel.expect([:false]bool);
+    try with_sentinel.expectError([*c]const u8, error.PointerLacksSentinel);
+
+    const is_fs = isPointer(.{ .address_space = .fs });
+    try is_fs.expect(*addrspace(.fs) u8);
+    try is_fs.expectError(*f32, error.WrongAddressSpace);
+}
+
 pub const is_container = fromResultFn(@import("impl/containers.zig").is, .{});
 test is_container {
     try is_container.expect(enum {});
