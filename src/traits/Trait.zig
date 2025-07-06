@@ -500,3 +500,28 @@ test hasSize {
     try from16_till24.expect(i24);
     try from16_till24.expectError(i25, error.BitSizeTooBig);
 }
+
+const array_lists = @import("impl/array_lists.zig");
+pub fn isArrayList(comptime o: array_lists.Options) z.Trait {
+    return fromResultFn(array_lists.is, .{o});
+}
+test isArrayList {
+    try isArrayList(.{}).expect(std.ArrayList(u8));
+    try isArrayList(.{}).expect(std.ArrayListAlignedUnmanaged(isize, .@"4"));
+    try isArrayList(.{}).expectError(struct {
+        items: []const u8,
+    }, error.NotAnArrayList);
+
+    const managed = isArrayList(.{ .managed = true });
+    try managed.expect(std.ArrayList(bool));
+    try managed.expectError(std.ArrayListUnmanaged(bool), error.IsUnmanaged);
+
+    const aligned = isArrayList(.{ .alignment = .least_natural });
+    try aligned.expect(std.ArrayListAligned(usize, .fromByteUnits(2 * @alignOf(usize))));
+    try aligned.expect(std.ArrayList(usize));
+    try aligned.expectError(std.ArrayListAligned(usize, .fromByteUnits(@alignOf(usize) / 2)), error.AlignmentTooSmall);
+
+    const of_int = isArrayList(.{ .item = .isInt(.{}) });
+    try of_int.expect(std.ArrayList(usize));
+    try of_int.expectError(std.ArrayList(bool), error.IsBool);
+}
