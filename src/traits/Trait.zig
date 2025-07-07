@@ -525,3 +525,52 @@ test isArrayList {
     try of_int.expect(std.ArrayList(usize));
     try of_int.expectError(std.ArrayList(bool), error.IsBool);
 }
+
+const hash_maps = @import("impl/hash_map.zig");
+pub fn isHashMap(comptime o: hash_maps.Options) z.Trait {
+    return fromResultFn(hash_maps.is, .{o});
+}
+test isHashMap {
+    try isHashMap(.{}).expect(std.AutoHashMap([]const u8, []const u8));
+    try isHashMap(.{}).expect(std.StringHashMapUnmanaged(isize));
+
+    const managed = isHashMap(.{ .managed = true });
+    try managed.expect(std.AutoHashMap(void, void));
+    try managed.expectError(std.AutoHashMapUnmanaged(void, void), error.IsUnmanaged);
+
+    const not_auto = isHashMap(.{ .auto = false });
+    try not_auto.expect(std.HashMap(void, void, std.hash_map.AutoContext(void), 1));
+    try not_auto.expect(std.HashMap(
+        []const u8,
+        u8,
+        std.hash_map.StringContext,
+        std.hash_map.default_max_load_percentage,
+    ));
+    try not_auto.expectError(std.HashMap(
+        void,
+        void,
+        std.hash_map.AutoContext(void),
+        std.hash_map.default_max_load_percentage,
+    ), error.IsAuto);
+
+    const mlp_75 = isHashMap(.{ .max_load_percentage = 75 });
+    try mlp_75.expect(std.HashMap(void, void, std.hash_map.AutoContext(void), 75));
+    try mlp_75.expectError(std.HashMap(
+        void,
+        void,
+        std.hash_map.AutoContext(void),
+        76,
+    ), error.WrongMaxLoadPercentage);
+
+    const key_is_int = isHashMap(.{ .key = .isInt(.{}) });
+    try key_is_int.expect(std.AutoHashMap(u8, u8));
+    try key_is_int.expectError(std.AutoHashMap(void, void), error.IsVoid);
+
+    const val_is_int = isHashMap(.{ .val = .isInt(.{}) });
+    try val_is_int.expect(std.AutoHashMap([]const u8, usize));
+    try val_is_int.expectError(std.AutoHashMap(usize, []const u8), error.IsPointer);
+
+    const ctx_is_str = isHashMap(.{ .context = .is(std.hash_map.StringContext) });
+    try ctx_is_str.expect(std.StringHashMap(void));
+    try ctx_is_str.expectError(std.AutoHashMap([]const u8, void), error.WrongType);
+}

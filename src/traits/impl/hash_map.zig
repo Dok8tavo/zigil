@@ -1,0 +1,125 @@
+const std = @import("std");
+const z = @import("../../root.zig");
+
+pub const Options = struct {
+    auto: ?bool = null,
+    managed: ?bool = null,
+
+    context: z.Trait = .no_trait,
+
+    key: z.Trait = .no_trait,
+    val: z.Trait = .no_trait,
+
+    max_load_percentage: ?u7 = null,
+};
+
+pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
+    comptime {
+        const r = z.Trait.Result.init(
+            T,
+            "is-hash-map",
+            "The type must come from an `std.HashMap`function.",
+        );
+
+        const not_hash_map = r.withFailure(.{
+            .@"error" = error.NotAHashMap,
+            .expect = "The type must come from `std.HashMap` or `std.HashMapUnmanaged",
+        });
+
+        const actual_managed, const Unmanaged = if (z.Trait.hasDecl("Unmanaged", .{ .of_type_which = .is(type) }).check(T))
+            .{ true, T.Unmanaged }
+        else
+            .{ false, T };
+
+        const Key, const Val = kv: {
+            const has_kv = z.Trait.hasDecl("KV", .{
+                .is_type_which = .isStruct(.{
+                    .field_count = .exact_items,
+                    .fields = .many(&.{
+                        .{ .name = "key" },
+                        .{ .name = "value" },
+                    }),
+                }),
+            });
+
+            if (!has_kv.check(Unmanaged))
+                return not_hash_map;
+
+            break :kv [2]type{
+                @FieldType(Unmanaged.KV, "key"),
+                @FieldType(Unmanaged.KV, "value"),
+            };
+        };
+
+        const Context = ctx: {
+            const has_promote_context = z.Trait.hasDecl("promoteContext", .{
+                .of_type_which = .isFunction(.{
+                    .param_count = .exact_items,
+                    .params = &.{
+                        .{ .type = .is(Unmanaged) },
+                        .{ .type = .is(std.mem.Allocator) },
+                        .{ .is_generic = false },
+                    },
+                }),
+            });
+
+            if (!has_promote_context.check(Unmanaged))
+                return not_hash_map;
+
+            break :ctx @typeInfo(@TypeOf(Unmanaged.promoteContext)).@"fn".params[2].type.?;
+        };
+
+        const actual_mlp = for (1..100) |p| {
+            if (Unmanaged == std.HashMapUnmanaged(Key, Val, Context, p)) break p;
+        } else return not_hash_map;
+
+        if (actual_managed)
+            if (T != std.HashMap(Key, Val, Context, actual_mlp))
+                return not_hash_map;
+
+        if (r.propagateFail(Key, o.key, .{
+            .option = .withTraitName("K => {s}"),
+            .expect = .withTraitName("The `Key` type must satisfy the trait `{s}`."),
+        })) |fail| return fail;
+
+        if (r.propagateFail(Val, o.val, .{
+            .option = .withTraitName("V => {s}"),
+            .expect = .withTraitName("The `Value` type must satisfy the trait `{s}`."),
+        })) |fail| return fail;
+
+        if (r.propagateFail(Context, o.context, .{
+            .option = .withTraitName("Context => {s}"),
+            .expect = .withTraitName("The `Context` type must satisfy the trait `{s}`."),
+        })) |fail| return fail;
+
+        const actual_auto =
+            Context == std.hash_map.AutoContext(Key) and
+            actual_mlp == std.hash_map.default_max_load_percentage;
+        if (o.auto) |expect_auto| if (expect_auto != actual_auto) return r.withFailure(.{
+            .@"error" = if (actual_auto) error.IsAuto else error.IsNotAuto,
+            .option = if (expect_auto) "auto" else "not-auto",
+            .expect = z.fmt(
+                "The hash map {s} use the auto context.",
+                .{if (expect_auto) "must" else "can't"},
+            ),
+        });
+
+        if (o.managed) |expect_managed| if (actual_managed != expect_managed) return r.withFailure(.{
+            .@"error" = if (actual_managed) error.IsManaged else error.IsUnmanaged,
+            .option = if (expect_managed) "managed" else "unmanaged",
+            .expect = z.fmt(
+                "The hash map {s} be managed.",
+                .{if (expect_managed) "must" else "can't"},
+            ),
+        });
+
+        if (o.max_load_percentage) |expect_mlp| if (expect_mlp != actual_mlp) return r.withFailure(.{
+            .@"error" = error.WrongMaxLoadPercentage,
+            .option = z.fmt("max-load == {}%", .{expect_mlp}),
+            .expect = z.fmt("The max load percentage must be {}.", .{expect_mlp}),
+            .actual = z.fmt("The max load percentage is {}.", .{actual_mlp}),
+        });
+
+        return r;
+    }
+}
