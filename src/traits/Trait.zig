@@ -574,3 +574,39 @@ test isHashMap {
     try ctx_is_str.expect(std.StringHashMap(void));
     try ctx_is_str.expectError(std.AutoHashMap([]const u8, void), error.WrongType);
 }
+
+const array_hash_map = @import("impl/array_hash_map.zig");
+pub fn isArrayHashMap(comptime o: array_hash_map.Options) Trait {
+    return fromResultFn(array_hash_map.is, .{o});
+}
+test isArrayHashMap {
+    try isArrayHashMap(.{}).expect(std.AutoArrayHashMap(void, void));
+    try isArrayHashMap(.{}).expect(std.StringArrayHashMapUnmanaged(usize));
+
+    const unmanaged = isArrayHashMap(.{ .managed = false });
+    try unmanaged.expect(std.AutoArrayHashMapUnmanaged(usize, *struct { u8 }));
+    try unmanaged.expectError(std.StringArrayHashMap(f32), error.IsManaged);
+
+    const auto = isArrayHashMap(.{ .auto = true });
+    try auto.expect(std.AutoArrayHashMap([]const u8, []usize));
+    try auto.expectError(std.StringArrayHashMap([]usize), error.IsNotAuto);
+
+    const store_hash = isArrayHashMap(.{ .store_hash = true });
+    try store_hash.expect(std.ArrayHashMap(
+        usize,
+        usize,
+        std.array_hash_map.AutoContext(usize),
+        true,
+    ));
+    try store_hash.expectError(std.ArrayHashMap(
+        usize,
+        usize,
+        std.array_hash_map.AutoContext(usize),
+        false,
+    ), error.NoStoreHash);
+
+    const int_to_ptr = isArrayHashMap(.{ .key = .isInt(.{}), .val = .isPointer(.{}) });
+    try int_to_ptr.expect(std.AutoArrayHashMap(i32, []u8));
+    try int_to_ptr.expectError(std.AutoArrayHashMap([]u8, []u8), error.IsPointer);
+    try int_to_ptr.expectError(std.AutoArrayHashMap(i32, i32), error.IsInt);
+}
