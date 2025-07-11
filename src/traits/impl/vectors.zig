@@ -49,6 +49,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             .is => |max| max,
         };
 
+        // TODO: compile error instead?
         if (max < min) return r.withFailure(.{
             .@"error" = error.ImpossibleRequirement,
             .option = z.fmt("max-len[{}] < min-len[{}]", .{ max, min }),

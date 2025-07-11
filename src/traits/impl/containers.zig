@@ -40,14 +40,13 @@ pub fn is(comptime T: type) z.Trait.Result {
                 .actual = "The type is a tuple.",
                 .repair = "Consider naming its fields, to make a struct.",
             }),
-            inline .int, .comptime_int => |_, k| r.withFailure(.{
-                .@"error" = kind.@"error"(k),
-                .actual = z.fmt("The type is a {s}.", .{kind.denomination(k)}),
-                .repair = z.fmt("Consider wrapping it in an `enum({s})`.", .{@typeName(T)}),
-            }),
             inline else => |_, k| r.withFailure(.{
                 .@"error" = kind.@"error"(k),
                 .actual = z.fmt("The type is a {s}.", .{kind.denomination(k)}),
+                .repair = switch (k) {
+                    .int, .comptime_int => z.fmt("Consider wrapping it in an `enum({s})`.", .{@typeName(T)}),
+                    else => "",
+                },
             }),
         };
     }
