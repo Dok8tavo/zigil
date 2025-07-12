@@ -130,3 +130,56 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
         return r;
     }
 }
+
+pub const ContextOptions = @import("hash_maps.zig").ContextOptions;
+
+pub fn isContext(comptime T: type, comptime co: ContextOptions) z.Trait.Result {
+    comptime {
+        const r = z.Trait.Result.init(
+            T,
+            "is-array-hash-map-context",
+            "The type must be suitable as an array hash map context.",
+        );
+
+        if (r.propagateFail(T, .hasMethod("hash", .{
+            .is_varargs = false,
+            .is_generic = false,
+            .return_type = .{ .trait = .is(u32) },
+            .other_param_count = .{ .exact = 1 },
+        }), .{
+            .expect = .str("The type must have a `fn hash(self, Key) u32` function."),
+        })) |fail| return fail;
+
+        if (r.propagateFail(T, .hasMethod("eql", .{
+            .is_varargs = false,
+            .is_generic = false,
+            .return_type = .{ .trait = .is(bool) },
+            .other_param_count = .{ .exact = 3 },
+            .other_params = &.{ .{}, .{}, .{ .trait = .is(usize) } },
+        }), .{
+            .expect = .str("The type must have a `fn eql(self, Key, Key, u32) bool` function"),
+        })) |fail| return fail;
+
+        const HashKey = @typeInfo(@TypeOf(T.hash)).@"fn".params[1].type.?;
+        const EqlKey1 = @typeInfo(@TypeOf(T.eql)).@"fn".params[1].type.?;
+        const EqlKey2 = @typeInfo(@TypeOf(T.eql)).@"fn".params[2].type.?;
+
+        if (r.propagateFail(EqlKey1, .is(HashKey), .{
+            .expect = .str("The second parameters of the `hash` and `eql` methods must have the same type."),
+        })) |fail| return fail;
+
+        if (r.propagateFail(EqlKey2, .is(EqlKey1), .{
+            .expect = .str("The second and third parameters of the `eql` method must have the same type."),
+        })) |fail| return fail;
+
+        if (r.propagateFail(HashKey, co.key, .{
+            .option = .withTraitName("key => {s}"),
+        })) |fail| return fail;
+
+        if (r.propagateFail(T, co.context, .{
+            .option = .withTraitName("{s}"),
+        })) |fail| return fail;
+
+        return r;
+    }
+}

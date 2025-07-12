@@ -606,9 +606,9 @@ test isHashMap {
     try ctx_is_str.expectError(std.AutoHashMap([]const u8, void), error.WrongType);
 }
 
-const array_hash_map = @import("impl/array_hash_maps.zig");
-pub fn isArrayHashMap(comptime o: array_hash_map.Options) Trait {
-    return fromResultFn(array_hash_map.is, .{o});
+const array_hash_maps = @import("impl/array_hash_maps.zig");
+pub fn isArrayHashMap(comptime co: array_hash_maps.Options) Trait {
+    return fromResultFn(array_hash_maps.is, .{co});
 }
 test isArrayHashMap {
     try isArrayHashMap(.{}).expect(std.AutoArrayHashMap(void, void));
@@ -640,4 +640,94 @@ test isArrayHashMap {
     try int_to_ptr.expect(std.AutoArrayHashMap(i32, []u8));
     try int_to_ptr.expectError(std.AutoArrayHashMap([]u8, []u8), error.IsPointer);
     try int_to_ptr.expectError(std.AutoArrayHashMap(i32, i32), error.IsInt);
+}
+
+pub fn isHashMapContext(comptime co: hash_maps.ContextOptions) Trait {
+    return fromResultFn(hash_maps.isContext, .{co});
+}
+test isHashMapContext {
+    const is_ctx = isHashMapContext(.{});
+    try is_ctx.expectError(u8, error.IsInt);
+    try is_ctx.expectError(struct {}, error.MissingDeclaration);
+    try is_ctx.expectError(struct {
+        pub fn eql() void {}
+        pub fn hash() void {}
+    }, error.WrongType);
+    try is_ctx.expectError(struct {
+        pub fn eql() bool {}
+        pub fn hash() u64 {}
+    }, error.WrongParamCount);
+    try is_ctx.expectError(struct {
+        pub fn eql(_: void, _: void, _: void) bool {}
+        pub fn hash(_: void, _: void) u64 {}
+    }, error.NoSelf);
+    try is_ctx.expect(struct {
+        pub fn hash(_: @This(), _: void) u64 {}
+        pub fn eql(_: @This(), _: void, _: void) bool {}
+    });
+
+    const is_ctx_union = isHashMapContext(.{ .context = .isUnion(.{}) });
+    try is_ctx_union.expectError(struct {
+        pub fn hash(_: @This(), _: void) u64 {}
+        pub fn eql(_: @This(), _: void, _: void) bool {}
+    }, error.IsStruct);
+    try is_ctx_union.expect(union {
+        pub fn hash(_: @This(), _: void) u64 {}
+        pub fn eql(_: @This(), _: void, _: void) bool {}
+    });
+
+    const is_ctx_key_is_int = isHashMapContext(.{ .key = .isInt(.{}) });
+    try is_ctx_key_is_int.expectError(struct {
+        pub fn hash(_: @This(), _: void) u64 {}
+        pub fn eql(_: @This(), _: void, _: void) bool {}
+    }, error.IsVoid);
+    try is_ctx_key_is_int.expect(struct {
+        pub fn hash(_: @This(), _: u8) u64 {}
+        pub fn eql(_: @This(), _: u8, _: u8) bool {}
+    });
+}
+
+pub fn isArrayHashMapContext(comptime o: array_hash_maps.ContextOptions) Trait {
+    return fromResultFn(array_hash_maps.isContext, .{o});
+}
+test isArrayHashMapContext {
+    const is_ctx = isArrayHashMapContext(.{});
+    try is_ctx.expectError(u8, error.IsInt);
+    try is_ctx.expectError(struct {}, error.MissingDeclaration);
+    try is_ctx.expectError(struct {
+        pub fn eql() void {}
+        pub fn hash() void {}
+    }, error.WrongType);
+    try is_ctx.expectError(struct {
+        pub fn eql() bool {}
+        pub fn hash() u32 {}
+    }, error.WrongParamCount);
+    try is_ctx.expectError(struct {
+        pub fn eql(_: void, _: void, _: void, _: usize) bool {}
+        pub fn hash(_: void, _: void) u32 {}
+    }, error.NoSelf);
+    try is_ctx.expect(struct {
+        pub fn hash(_: @This(), _: void) u32 {}
+        pub fn eql(_: @This(), _: void, _: void, _: usize) bool {}
+    });
+
+    const is_ctx_union = isArrayHashMapContext(.{ .context = .isUnion(.{}) });
+    try is_ctx_union.expectError(struct {
+        pub fn hash(_: @This(), _: void) u32 {}
+        pub fn eql(_: @This(), _: void, _: void, _: usize) bool {}
+    }, error.IsStruct);
+    is_ctx_union.assert(union {
+        pub fn hash(_: @This(), _: void) u32 {}
+        pub fn eql(_: @This(), _: void, _: void, _: usize) bool {}
+    });
+
+    const is_ctx_key_is_int = isArrayHashMapContext(.{ .key = .isInt(.{}) });
+    try is_ctx_key_is_int.expectError(struct {
+        pub fn hash(_: @This(), _: void) u32 {}
+        pub fn eql(_: @This(), _: void, _: void, _: usize) bool {}
+    }, error.IsVoid);
+    try is_ctx_key_is_int.expect(struct {
+        pub fn hash(_: @This(), _: u8) u32 {}
+        pub fn eql(_: @This(), _: u8, _: u8, _: usize) bool {}
+    });
 }
