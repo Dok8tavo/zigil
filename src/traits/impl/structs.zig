@@ -175,7 +175,10 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
                 .natural => .{
                     .@"error" = error.NonNaturalFieldAlignment,
                     .option = z.fmt("has-field[\"{s}\", natural-alignment]", .{actual.name}),
-                    .expect = z.fmt("The alignment of the field \"{s}\" must be the natural alignment of its type."),
+                    .expect = z.fmt(
+                        "The alignment of the field \"{s}\" must be the natural alignment of its type.",
+                        .{actual.name},
+                    ),
                     .actual = z.fmt(
                         "The natural alignment of its type is {} but the field's alignment is {}.",
                         .{ @alignOf(actual.type), actual.alignment },

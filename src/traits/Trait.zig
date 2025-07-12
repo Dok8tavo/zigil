@@ -731,3 +731,30 @@ test isArrayHashMapContext {
         pub fn eql(_: @This(), _: u8, _: u8, _: usize) bool {}
     });
 }
+
+const bounded_arrays = @import("impl/bounded_arrays.zig");
+pub fn isBoundedArray(comptime o: bounded_arrays.Options) Trait {
+    return fromResultFn(bounded_arrays.is, .{o});
+}
+test isBoundedArray {
+    const ba = isBoundedArray(.{});
+    try ba.expectError(usize, error.NotBoundedArray);
+    try ba.expect(std.BoundedArray(u8, 8));
+    try ba.expect(std.BoundedArrayAligned(isize, .@"1", 256));
+
+    const most_8 = isBoundedArray(.{ .capacity = .until(8) });
+    try most_8.expectError(std.BoundedArray(u8, 9), error.CapacityTooBig);
+    try most_8.expect(std.BoundedArray(u8, 8));
+
+    const least_16 = isBoundedArray(.{ .capacity = .from(16) });
+    try least_16.expectError(std.BoundedArray(anyerror, 15), error.CapacityTooSmall);
+    try least_16.expect(std.BoundedArray(anyerror, 16));
+
+    const ba_int = isBoundedArray(.{ .item = .isInt(.{}) });
+    try ba_int.expectError(std.BoundedArray([2]u8, 8), error.IsArray);
+    try ba_int.expect(std.BoundedArray(u16, 8));
+
+    const ba_nat = isBoundedArray(.{ .alignment = .natural });
+    try ba_nat.expectError(std.BoundedArrayAligned(u8, .@"2", 128), error.NonNaturalFieldAlignment);
+    try ba_nat.expect(std.BoundedArrayAligned(u16, .@"2", 16));
+}
