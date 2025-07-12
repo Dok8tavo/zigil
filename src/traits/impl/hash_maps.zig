@@ -56,8 +56,8 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
                 .of_type_which = .isFunction(.{
                     .param_count = .exact_items,
                     .params = &.{
-                        .{ .type = .is(Unmanaged) },
-                        .{ .type = .is(std.mem.Allocator) },
+                        .{ .trait = .is(Unmanaged) },
+                        .{ .trait = .is(std.mem.Allocator) },
                         .{ .is_generic = false },
                     },
                 }),
@@ -119,6 +119,61 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             .expect = z.fmt("The max load percentage must be {}.", .{expect_mlp}),
             .actual = z.fmt("The max load percentage is {}.", .{actual_mlp}),
         });
+
+        return r;
+    }
+}
+
+pub const ContextOptions = struct {
+    context: z.Trait = .no_trait,
+    key: z.Trait = .no_trait,
+};
+
+pub fn isContext(comptime T: type, comptime co: ContextOptions) z.Trait.Result {
+    comptime {
+        const r = z.Trait.Result.init(
+            T,
+            "is-hash-map-context",
+            "The type must be suitable as a hash map context.",
+        );
+
+        if (r.propagateFail(T, .hasMethod("hash", .{
+            .is_generic = false,
+            .is_varargs = false,
+            .return_type = .{ .trait = .is(u64) },
+            .other_param_count = .{ .exact = 1 },
+        }), .{
+            .expect = "The type must have a `fn hash(self, Key) u64` method.",
+        })) |fail| return fail;
+
+        if (r.propagateFail(T, .hasMethod("eql", .{
+            .is_varargs = false,
+            .is_generic = false,
+            .result_type = .{ .trait = .is(bool) },
+            .other_param_count = .{ .exact = 2 },
+        }), .{
+            .expect = "The type must have `fn eql(self, Key, Key) bool` method.",
+        })) |fail| return fail;
+
+        const HashKey = @typeInfo(@TypeOf(T.hash)).@"fn".params[1];
+        const EqlKey1 = @typeInfo(@TypeOf(T.eql)).@"fn".params[1];
+        const EqlKey2 = @typeInfo(@TypeOf(T.eql)).@"fn".params[2];
+
+        if (r.propagateFail(EqlKey1, .is(HashKey), .{
+            .expect = "The second parameters of the `hash` and `eql` methods must have the same type.",
+        })) |fail| return fail;
+
+        if (r.propagateFail(EqlKey2, .is(EqlKey1), .{
+            .expect = "The second and third parameters of the `eql` method must have the same type.",
+        })) |fail| return fail;
+
+        if (r.propagateFail(HashKey, co.key, .{
+            .option = .withTraitName("key => {s}"),
+        })) |fail| return fail;
+
+        if (r.propagateFail(T, co.context, .{
+            .option = .withTraitName("{s}"),
+        })) |fail| return fail;
 
         return r;
     }

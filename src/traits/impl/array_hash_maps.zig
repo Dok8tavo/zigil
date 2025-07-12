@@ -56,8 +56,8 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
                 .of_type_which = .isFunction(.{
                     .param_count = .exact_items,
                     .params = &.{
-                        .{ .type = .is(Unmanaged) },
-                        .{ .type = .is(Key) },
+                        .{ .trait = .is(Unmanaged) },
+                        .{ .trait = .is(Key) },
                         .{ .is_generic = false },
                     },
                 }),

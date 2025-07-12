@@ -5,17 +5,19 @@ pub const Options = struct {
     calling_convention: ?std.builtin.CallingConvention = null,
     is_generic: ?bool = null,
     is_varargs: ?bool = null,
-    return_type: struct {
-        is_generic: ?bool = null,
-        trait: z.Trait = .no_trait,
-    } = .{},
+    return_type: Return = .{},
     params: []const Param = &.{},
     param_count: @import("options.zig").Count = .no_option,
+
+    pub const Return = struct {
+        is_generic: ?bool = null,
+        trait: z.Trait = .no_trait,
+    };
 
     pub const Param = struct {
         is_noalias: ?bool = null,
         is_generic: ?bool = null,
-        type: z.Trait = .no_trait,
+        trait: z.Trait = .no_trait,
     };
 };
 
@@ -96,7 +98,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
                 .actual = z.fmt("The parameter {} {s} noalias.", .{ i, if (is_noalias) "isn't" else "is" }),
             });
 
-            if (actual.type) |Param| if (r.propagateFail(Param, expect.type, .{
+            if (actual.type) |Param| if (r.propagateFail(Param, expect.trait, .{
                 .option = .withTraitName("param => {s}"),
                 .expect = .withTraitName("The parameter type must satisfy the trait `{s}`."),
             })) |fail| return fail;

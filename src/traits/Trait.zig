@@ -378,7 +378,7 @@ test isFunction {
     try has_many_param.expectError(fn (void) void, error.TooFewParams);
     try has_many_param.expect(fn (bool, bool, bool) void);
 
-    const has_int_param = isFunction(.{ .params = &.{.{ .type = .isInt(.{}) }} });
+    const has_int_param = isFunction(.{ .params = &.{.{ .trait = .isInt(.{}) }} });
     try has_int_param.expect(fn (u8) void);
     try has_int_param.expectError(fn (f32) void, error.IsFloat);
 }
@@ -465,6 +465,37 @@ test hasDecl {
         }),
     }).expect(Trait);
 }
+const methods = @import("impl/methods.zig");
+pub fn hasMethod(comptime meth: []const u8, comptime o: methods.Options) Trait {
+    return fromResultFn(methods.has, .{ meth, o });
+}
+test hasMethod {
+    const has_method = hasMethod("hello", .{});
+    try has_method.expectError(u8, error.IsInt);
+    try has_method.expectError(struct {}, error.MissingDeclaration);
+    try has_method.expectError(struct {
+        pub const hello = 8;
+    }, error.IsComptimeInt);
+    try has_method.expectError(struct {
+        pub fn hello() void {}
+    }, error.TooFewParams);
+    try has_method.expectError(struct {
+        pub fn hello(_: void) void {}
+    }, error.NoSelf);
+
+    try has_method.expect(struct {
+        pub fn hello(_: @This()) void {}
+    });
+    try has_method.expect(struct {
+        pub fn hello(_: anytype) void {}
+    });
+    try has_method.expect(struct {
+        pub fn hello(_: *@This()) void {}
+    });
+    try has_method.expect(struct {
+        pub fn hello(_: *const @This()) void {}
+    });
+}
 
 const alignment = @import("impl/alignment.zig");
 pub fn hasNaturalAlignment(comptime na: alignment.NaturalAlignment) Trait {
@@ -526,7 +557,7 @@ test isArrayList {
     try of_int.expectError(std.ArrayList(bool), error.IsBool);
 }
 
-const hash_maps = @import("impl/hash_map.zig");
+const hash_maps = @import("impl/hash_maps.zig");
 pub fn isHashMap(comptime o: hash_maps.Options) z.Trait {
     return fromResultFn(hash_maps.is, .{o});
 }
@@ -575,7 +606,7 @@ test isHashMap {
     try ctx_is_str.expectError(std.AutoHashMap([]const u8, void), error.WrongType);
 }
 
-const array_hash_map = @import("impl/array_hash_map.zig");
+const array_hash_map = @import("impl/array_hash_maps.zig");
 pub fn isArrayHashMap(comptime o: array_hash_map.Options) Trait {
     return fromResultFn(array_hash_map.is, .{o});
 }

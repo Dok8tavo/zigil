@@ -74,7 +74,7 @@ pub inline fn propagateFailingResult(
     comptime {
         passing_result.compileErrorOnFailure();
         var failing_result = if (r.failure) |failure| passing_result.withFailure(.{
-            .option = if (info.option) |o| o.resolve("...") else null,
+            .option = info.option,
             .expect = info.expect,
             .@"error" = failure.@"error",
             .actual = failure.actual,
