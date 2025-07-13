@@ -133,6 +133,23 @@ test isVector {
     try impossible.expectError(@Vector(7, u8), error.ImpossibleRequirement);
 }
 
+const arrays = @import("impl/arrays.zig");
+pub fn isArray(comptime o: arrays.Options) Trait {
+    return fromResultFn(arrays.is, .{o});
+}
+test isArray {
+    try isArray(.{}).expect([2]u8);
+
+    const array_of_optionals = isArray(.{ .child = .isOptional(.no_trait) });
+    try array_of_optionals.expect([2]?u8);
+    try array_of_optionals.expectError([2]u8, error.IsInt);
+
+    const long_array = isArray(.{ .length = .from(1000) });
+    try long_array.expect([1000]usize);
+    try long_array.expect([10_000]i32);
+    try long_array.expectError([999]struct {}, error.TooShort);
+}
+
 const ints = @import("impl/ints.zig");
 pub fn isInt(comptime o: ints.Options) Trait {
     return fromResultFn(ints.is, .{o});
