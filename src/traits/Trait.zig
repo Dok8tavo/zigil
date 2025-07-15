@@ -428,7 +428,7 @@ test isPointer {
     const natural_aligned = isPointer(.{ .alignment = .natural });
     try natural_aligned.expect(*i32);
     try natural_aligned.expect(*align(1) u8);
-    try natural_aligned.expectError(*align(1) i32, error.WrongAlignment);
+    try natural_aligned.expectError(*align(1) i32, error.NotNaturalAlignment);
 
     const to_struct = isPointer(.{ .child = .isStruct(.{}) });
     try to_struct.expect(*struct {});
@@ -515,8 +515,12 @@ test hasMethod {
 }
 
 const alignment = @import("impl/alignment.zig");
-pub fn hasNaturalAlignment(comptime na: alignment.NaturalAlignment) Trait {
-    return fromResultFn(alignment.hasNaturalAlignment, .{na});
+pub fn hasNaturalAlignment(comptime na: alignment.Natural) Trait {
+    return Trait{ .result = struct {
+        pub fn call(comptime T: type) Result {
+            return na.result(T);
+        }
+    }.call };
 }
 test hasNaturalAlignment {
     const exact_16 = hasNaturalAlignment(.{ .exact = 2 });
@@ -567,7 +571,10 @@ test isArrayList {
     const aligned = isArrayList(.{ .alignment = .least_natural });
     try aligned.expect(std.ArrayListAligned(usize, .fromByteUnits(2 * @alignOf(usize))));
     try aligned.expect(std.ArrayList(usize));
-    try aligned.expectError(std.ArrayListAligned(usize, .fromByteUnits(@alignOf(usize) / 2)), error.AlignmentTooSmall);
+    try aligned.expectError(
+        std.ArrayListAligned(usize, .fromByteUnits(@alignOf(usize) / 2)),
+        error.LessThanNaturalAlignment,
+    );
 
     const of_int = isArrayList(.{ .item = .isInt(.{}) });
     try of_int.expect(std.ArrayList(usize));
@@ -772,6 +779,6 @@ test isBoundedArray {
     try ba_int.expect(std.BoundedArray(u16, 8));
 
     const ba_nat = isBoundedArray(.{ .alignment = .natural });
-    try ba_nat.expectError(std.BoundedArrayAligned(u8, .@"2", 128), error.NonNaturalFieldAlignment);
+    try ba_nat.expectError(std.BoundedArrayAligned(u8, .@"2", 128), error.NotNaturalAlignment);
     try ba_nat.expect(std.BoundedArrayAligned(u16, .@"2", 16));
 }

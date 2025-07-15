@@ -3,7 +3,7 @@ const std = @import("std");
 const z = @import("../../root.zig");
 
 pub const Options = struct {
-    alignment: alignment.OtherAlignment = .no_option,
+    alignment: ?alignment.Other = null,
     item: z.Trait = .no_trait,
     managed: ?bool = null,
 };

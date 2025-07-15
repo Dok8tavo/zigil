@@ -37,7 +37,7 @@ pub const Options = struct {
     };
 
     pub const Field = struct {
-        alignment: alignment.OtherAlignment = .no_option,
+        alignment: ?alignment.Other = null,
         is_comptime: ?bool = null,
         name: []const u8,
         trait: z.Trait = .no_trait,
@@ -143,60 +143,15 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
                 )),
             })) |fail| return fail;
 
-            if (!expect.alignment.has(
-                @alignOf(actual.type),
-                actual.alignment,
-            )) return r.withFailure(switch (expect.alignment) {
-                .no_option => unreachable,
-                .custom => |custom| .{
-                    .@"error" = error.WrongFieldAlignment,
-                    .option = z.fmt("has-field[\"{s}\", alignment == {}]", .{ actual.name, custom }),
+            if (expect.alignment) |expect_align| {
+                if (r.propagateFailingResult(expect_align.result(actual.type, actual.alignment), .{
+                    .option = z.fmt("alignment[{s}]", .{expect_align.optionName()}),
                     .expect = z.fmt(
-                        "The alignment of the field \"{s}\" must be exactly {}.",
-                        .{ actual.name, custom },
-                    ),
-                    .actual = z.fmt(
-                        "The alignment of the field \"{s}\" is {}.",
-                        .{ actual.name, actual.alignment },
-                    ),
-                },
-                .least_custom => |least| .{
-                    .@"error" = error.FieldAlignmentTooSmall,
-                    .option = z.fmt("has-field[\"{s}\", alignment <= {}]", .{ actual.name, least }),
-                    .expect = z.fmt(
-                        "The alignment of the field \"{s}\" must be at least {}.",
-                        .{ actual.name, least },
-                    ),
-                    .actual = z.fmt(
-                        "The alignment of the field \"{s}\" is {}.",
-                        .{ actual.name, actual.alignment },
-                    ),
-                },
-                .natural => .{
-                    .@"error" = error.NonNaturalFieldAlignment,
-                    .option = z.fmt("has-field[\"{s}\", natural-alignment]", .{actual.name}),
-                    .expect = z.fmt(
-                        "The alignment of the field \"{s}\" must be the natural alignment of its type.",
+                        "The alignment of the field \"{s}\" must satisfy the given condition.",
                         .{actual.name},
                     ),
-                    .actual = z.fmt(
-                        "The natural alignment of its type is {} but the field's alignment is {}.",
-                        .{ @alignOf(actual.type), actual.alignment },
-                    ),
-                },
-                .least_natural => .{
-                    .@"error" = error.SmallerThanNaturalFieldAlignment,
-                    .option = z.fmt("has-field[\"{s}\", least-natural-alignment]", .{actual.name}),
-                    .expect = z.fmt(
-                        "The alignment of the field \"{s}\" must be at least the natural alignment of its type.",
-                        .{actual.name},
-                    ),
-                    .actual = z.fmt(
-                        "The natural alignment of its type is {} but the fields's alignment is {}.",
-                        .{ @alignOf(actual.type), actual.alignment },
-                    ),
-                },
-            });
+                })) |fail| return fail;
+            }
         }
 
         return r;

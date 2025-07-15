@@ -4,7 +4,7 @@ const z = @import("../../root.zig");
 
 pub const Options = struct {
     address_space: ?std.builtin.AddressSpace = null,
-    alignment: alignment.OtherAlignment = .no_option,
+    alignment: ?alignment.Other = null,
     child: z.Trait = .no_trait,
 
     has_sentinel: ?bool = null,
@@ -96,22 +96,11 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             .expect = .withTraitName("The type it points to must satisfy the `{s}` trait."),
         })) |fail| return fail;
 
-        alignment: switch (o.alignment) {
-            .no_option => {},
-            .natural => continue :alignment .{ .custom = @alignOf(info.child) },
-            .least_natural => continue :alignment .{ .least_custom = @alignOf(info.child) },
-            .custom => |custom| if (info.alignment != custom) return r.withFailure(.{
-                .@"error" = error.WrongAlignment,
-                .option = z.fmt("align == {}", .{custom}),
-                .expect = z.fmt("The pointer alignment must be exactly {}.", .{custom}),
-                .actual = z.fmt("The pointer alignment is {}.", .{info.alignment}),
-            }),
-            .least_custom => |least| if (info.alignment < least) return r.withFailure(.{
-                .@"error" = error.AlignmentTooSmall,
-                .option = z.fmt("align >= {}", .{least}),
-                .expect = z.fmt("The pointer alignment must be at least {}.", .{least}),
-                .actual = z.fmt("The pointer alignment is {}.", .{info.alignment}),
-            }),
+        if (o.alignment) |expect_align| {
+            if (r.propagateFailingResult(expect_align.result(info.child, info.alignment), .{
+                .option = z.fmt("alignment[{s}]", .{expect_align.optionName()}),
+                .expect = "The pointer alignment must satisfy the given condition.",
+            })) |fail| return fail;
         }
 
         return r;
