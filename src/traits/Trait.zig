@@ -76,8 +76,9 @@ test is {
     try is(unique).expectError(struct {}, error.WrongType);
 }
 
-pub fn isKind(comptime kind: std.builtin.TypeId) Trait {
-    return fromResultFn(@import("impl/kind.zig").is, .{kind});
+const kind = @import("impl/kind.zig");
+pub fn isKind(comptime k: std.builtin.TypeId) Trait {
+    return fromResultFn(kind.is, .{k});
 }
 test isKind {
     try isKind(.int).expect(u8);
@@ -781,4 +782,44 @@ test isBoundedArray {
     const ba_nat = isBoundedArray(.{ .alignment = .natural });
     try ba_nat.expectError(std.BoundedArrayAligned(u8, .@"2", 128), error.NotNaturalAlignment);
     try ba_nat.expect(std.BoundedArrayAligned(u16, .@"2", 16));
+}
+
+pub const can_be_vectorized = Trait{
+    .result = struct {
+        pub fn canBeVectorized(comptime T: type) Result {
+            comptime {
+                const r = Result.init(
+                    T,
+                    "can-be-vectorized",
+                    "The type must be able to be a vector's child type.",
+                );
+
+                return switch (@typeInfo(T)) {
+                    .bool, .int, .float => r,
+                    .pointer => |pointer| if (pointer.size != .slice) r else r.withFailure(.{
+                        .@"error" = error.IsSlice,
+                        .actual = "The type is a slice, which can't be the item of a vector.",
+                    }),
+                    inline else => |_, tag| r.withFailure(.{
+                        .@"error" = kind.@"error"(tag),
+                        .actual = z.fmt("The type is {s}, which can't be the item of a vector.", .{
+                            kind.denomination(tag),
+                        }),
+                    }),
+                };
+            }
+        }
+    }.canBeVectorized,
+};
+test can_be_vectorized {
+    try can_be_vectorized.expect(usize);
+    try can_be_vectorized.expect(f128);
+    try can_be_vectorized.expect(bool);
+    try can_be_vectorized.expect(*struct { u8 });
+    try can_be_vectorized.expect([*]enum { one, two, three });
+    try can_be_vectorized.expect([*c]enum(u8) { suprise, mother, fork, err });
+
+    try can_be_vectorized.expectError(struct {}, error.IsStruct);
+    try can_be_vectorized.expectError(union {}, error.IsUnion);
+    try can_be_vectorized.expectError(enum {}, error.IsEnum);
 }

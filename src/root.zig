@@ -61,6 +61,9 @@ pub const Comptype = struct {
 /// implementation.
 pub inline fn eql(comptime T: type, comptime a: []const T, comptime b: []const T) bool {
     comptime {
+        if (!Trait.can_be_vectorized.check(T))
+            return std.mem.eql(T, a, b);
+
         if (a.len != b.len) return false;
         if (a.ptr == b.ptr) return true;
 
@@ -75,6 +78,45 @@ pub inline fn eql(comptime T: type, comptime a: []const T, comptime b: []const T
 test eql {
     try std.testing.expect(comptime eql(u8, "Hello", "Hello"));
     try std.testing.expect(!comptime eql(u8, "Goodbye", "Tschüss!"));
+}
+
+/// The purpose of this function is to consume less of the evaluation quota than the `std.mem.max`
+/// implementation.
+pub inline fn max(comptime T: type, comptime slice: []const T) ?T {
+    comptime {
+        if (!Trait.can_be_vectorized.check(T))
+            return std.mem.max(T, slice);
+
+        if (slice.len == 0)
+            return null;
+
+        const Vector = @Vector(slice.len, T);
+        const pointer: *const Vector = @alignCast(@ptrCast(slice));
+        const vector: Vector = pointer.*;
+
+        return @reduce(.Max, vector);
+    }
+}
+
+/// The purpose of this function is to consume less of the evaluation quota than the `std.mem.min`
+/// implementation.
+pub inline fn min(comptime T: type, comptime slice: []const T) ?T {
+    comptime {
+        if (!Trait.can_be_vectorized.check(T))
+            return std.mem.min(T, slice);
+
+        if (slice.len == 0)
+            return null;
+
+        const Vector = @Vector(slice.len, T);
+        const pointer: *const Vector = @alignCast(@ptrCast(slice));
+        const vector: Vector = pointer.*;
+
+        return @reduce(.Min, vector);
+    }
+}
+test max {
+    try std.testing.expectEqual(comptime max(u8, &.{ 0, 10, 5, 6, 4, 7 }), 10);
 }
 
 pub fn Range(comptime fold: enum { inner, outer }) type {
