@@ -6,15 +6,17 @@ const z = @import("../../root.zig");
 pub const Options = struct {
     is_tuple: ?bool = null,
     layout: containers.AllowLayout = .all,
-    backing_integer: BackingInteger = .{},
-    fields: Fields = .{},
-    field_count: ?Count = null,
+    backing_integer: BackingInteger = .no_requirement,
+    fields: Fields = .no_requirement,
+    field_count: Count = .least_items,
 
     pub const Count = @import("count.zig").Count;
 
     pub const BackingInteger = struct {
         is_null: ?bool = null,
         trait: z.Trait = .no_trait,
+
+        pub const no_requirement = BackingInteger{};
 
         pub fn must(comptime t: z.Trait) BackingInteger {
             return BackingInteger{
@@ -25,7 +27,9 @@ pub const Options = struct {
     };
 
     pub const Fields = struct {
-        slice: []const Field = &.{},
+        slice: ?[]const Field = null,
+
+        pub const no_requirement = Fields{};
 
         pub fn one(comptime field: Field) Fields {
             comptime return Fields{ .slice = &[_]Field{field} };
@@ -85,9 +89,9 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             .expect = .withTraitName("The backing integer must satisfy the trait `{s}`."),
         })) |fail| return fail;
 
-        if (o.field_count) |fc| field_count: switch (fc) {
-            .exact_items => continue :field_count .{ .exact = o.fields.slice.len },
-            .least_items => continue :field_count .{ .least = o.fields.slice.len },
+        field_count: switch (o.field_count) {
+            .exact_items => if (o.fields.slice) |slice| continue :field_count .{ .exact = slice.len },
+            .least_items => if (o.fields.slice) |slice| continue :field_count .{ .least = slice.len },
             .exact => |exact| if (info.fields.len != exact) return r.withFailure(.{
                 .@"error" = error.WrongFieldCount,
                 .option = z.fmt("field-count[=={}]", .{exact}),
@@ -100,9 +104,9 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
                 .expect = z.fmt("There must be at least {} fields.", .{least}),
                 .actual = z.fmt("The field count is {}.", .{info.fields.len}),
             }),
-        };
+        }
 
-        for (o.fields.slice) |expect| {
+        if (o.fields.slice) |fields| for (fields) |expect| {
             const actual: std.builtin.Type.StructField = for (info.fields) |field| {
                 if (z.eql(u8, field.name, expect.name)) break field;
             } else return r.withFailure(.{
@@ -151,7 +155,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
                     ),
                 })) |fail| return fail;
             }
-        }
+        };
 
         return r;
     }

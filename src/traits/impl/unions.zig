@@ -7,13 +7,15 @@ pub const Options = struct {
     is_tagged: ?bool = null,
     tag: z.Trait = .no_trait,
     layout: containers.AllowLayout = .all,
-    variants: Variants = .{},
-    variant_count: ?Count = null,
+    variants: Variants = .no_requirement,
+    variant_count: Count = .least_items,
 
     pub const Count = @import("count.zig").Count;
 
     pub const Variants = struct {
-        slice: []const Variant = &.{},
+        slice: ?[]const Variant = null,
+
+        pub const no_requirement = Variants{};
 
         pub fn one(comptime field: Variant) Variants {
             comptime return Variants{ .slice = &[_]Variant{field} };
@@ -62,9 +64,9 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             // TODO: .repair  = "layout suggestion",
         });
 
-        if (o.variant_count) |vc| variants_count: switch (vc) {
-            .exact_items => continue :variants_count .{ .exact = o.variants.slice.len },
-            .least_items => continue :variants_count .{ .least = o.variants.slice.len },
+        variants_count: switch (o.variant_count) {
+            .exact_items => if (o.variants.slice) |variants| continue :variants_count .{ .exact = variants.len },
+            .least_items => if (o.variants.slice) |variants| continue :variants_count .{ .least = variants.len },
             .exact => |exact| if (info.fields.len != exact) return r.withFailure(.{
                 .@"error" = error.WrongVariantCount,
                 .option = z.fmt("variant-count[=={}]", .{exact}),
@@ -77,9 +79,9 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
                 .expect = z.fmt("There must be at least {} variants.", .{least}),
                 .actual = z.fmt("The variant count is {}.", .{info.fields.len}),
             }),
-        };
+        }
 
-        for (o.variants.slice) |expect| {
+        if (o.variants.slice) |variants| for (variants) |expect| {
             const actual: std.builtin.Type.UnionField = for (info.fields) |variant| {
                 if (z.eql(u8, variant.name, expect.name)) break variant;
             } else return r.withFailure(.{
@@ -108,7 +110,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
                     ),
                 })) |fail| return fail;
             }
-        }
+        };
 
         return r;
     }

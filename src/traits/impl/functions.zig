@@ -6,12 +6,26 @@ pub const Options = struct {
     is_generic: ?bool = null,
     is_varargs: ?bool = null,
     return_type: Return = .{},
-    params: []const Param = &.{},
-    param_count: ?@import("count.zig").Count = null,
+    params: Params = .no_requirement,
+    param_count: @import("count.zig").Count = .least_items,
 
     pub const Return = struct {
         is_generic: ?bool = null,
         trait: z.Trait = .no_trait,
+    };
+
+    pub const Params = struct {
+        slice: ?[]const Param = null,
+
+        pub const no_requirement = Params{};
+
+        pub fn one(comptime p: Param) Params {
+            return Params{ .slice = &[_]Param{p} };
+        }
+
+        pub fn many(comptime slice: []const Param) Params {
+            return Params{ .slice = slice };
+        }
     };
 
     pub const Param = struct {
@@ -61,9 +75,9 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             .expect = .withTraitName("The return type must satisfy the trait `{s}`."),
         })) |fail| return fail;
 
-        if (o.param_count) |pc| param_count: switch (pc) {
-            .exact_items => continue :param_count .{ .exact = o.params.len },
-            .least_items => continue :param_count .{ .least = o.params.len },
+        param_count: switch (o.param_count) {
+            .exact_items => if (o.params.slice) |params| continue :param_count .{ .exact = params.len },
+            .least_items => if (o.params.slice) |params| continue :param_count .{ .least = params.len },
             .exact => |exact| if (exact != info.params.len) return r.withFailure(.{
                 .@"error" = error.WrongParamCount,
                 .option = z.fmt("param-count == {}", .{exact}),
@@ -76,11 +90,11 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
                 .expect = z.fmt("The parameter count must be at least {}.", .{least}),
                 .actual = z.fmt("The parameter count is {}.", .{info.params.len}),
             }),
-        };
+        }
 
-        const len = @min(o.params.len, info.params.len);
+        const len = if (o.params.slice) |params| @min(params.len, info.params.len) else 0;
         for (0..len) |i| {
-            const expect = o.params[i];
+            const expect = o.params.slice.?[i];
             const actual = info.params[i];
 
             if (expect.is_generic) |is_generic| if (is_generic != actual.is_generic) return r.withFailure(.{

@@ -396,7 +396,7 @@ test isFunction {
     try has_many_param.expectError(fn (void) void, error.TooFewParams);
     try has_many_param.expect(fn (bool, bool, bool) void);
 
-    const has_int_param = isFunction(.{ .params = &.{.{ .trait = .isInt(.{}) }} });
+    const has_int_param = isFunction(.{ .params = .one(.{ .trait = .isInt(.{}) }) });
     try has_int_param.expect(fn (u8) void);
     try has_int_param.expectError(fn (f32) void, error.IsFloat);
 }

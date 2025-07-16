@@ -55,11 +55,11 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             const has_get_entry_context = z.Trait.hasDecl("getEntryContext", .{
                 .of_type_which = .isFunction(.{
                     .param_count = .exact_items,
-                    .params = &.{
+                    .params = .many(&.{
                         .{ .trait = .is(Unmanaged) },
                         .{ .trait = .is(Key) },
                         .{ .is_generic = false },
-                    },
+                    }),
                 }),
             });
 
@@ -155,7 +155,7 @@ pub fn isContext(comptime T: type, comptime co: ContextOptions) z.Trait.Result {
             .is_generic = false,
             .return_type = .{ .trait = .is(bool) },
             .other_param_count = .{ .exact = 3 },
-            .other_params = &.{ .{}, .{}, .{ .trait = .is(usize) } },
+            .other_params = .many(&.{ .{}, .{}, .{ .trait = .is(usize) } }),
         }), .{
             .expect = .str("The type must have a `fn eql(self, Key, Key, u32) bool` function"),
         })) |fail| return fail;

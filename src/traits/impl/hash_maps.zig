@@ -55,11 +55,11 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             const has_promote_context = z.Trait.hasDecl("promoteContext", .{
                 .of_type_which = .isFunction(.{
                     .param_count = .exact_items,
-                    .params = &.{
+                    .params = .many(&.{
                         .{ .trait = .is(Unmanaged) },
                         .{ .trait = .is(std.mem.Allocator) },
                         .{ .is_generic = false },
-                    },
+                    }),
                 }),
             });
 
