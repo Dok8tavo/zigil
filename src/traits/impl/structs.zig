@@ -8,9 +8,9 @@ pub const Options = struct {
     layout: containers.AllowLayout = .all,
     backing_integer: BackingInteger = .{},
     fields: Fields = .{},
-    field_count: Count = .no_option,
+    field_count: ?Count = null,
 
-    pub const Count = @import("options.zig").Count;
+    pub const Count = @import("count.zig").Count;
 
     pub const BackingInteger = struct {
         is_null: ?bool = null,
@@ -85,8 +85,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             .expect = .withTraitName("The backing integer must satisfy the trait `{s}`."),
         })) |fail| return fail;
 
-        field_count: switch (o.field_count) {
-            .no_option => {},
+        if (o.field_count) |fc| field_count: switch (fc) {
             .exact_items => continue :field_count .{ .exact = o.fields.slice.len },
             .least_items => continue :field_count .{ .least = o.fields.slice.len },
             .exact => |exact| if (info.fields.len != exact) return r.withFailure(.{
@@ -101,7 +100,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
                 .expect = z.fmt("There must be at least {} fields.", .{least}),
                 .actual = z.fmt("The field count is {}.", .{info.fields.len}),
             }),
-        }
+        };
 
         for (o.fields.slice) |expect| {
             const actual: std.builtin.Type.StructField = for (info.fields) |field| {

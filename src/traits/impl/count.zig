@@ -1,5 +1,6 @@
+const z = @import("../../root.zig");
+
 pub const Count = union(enum) {
-    no_option,
     exact: usize,
     least: usize,
     exact_items,

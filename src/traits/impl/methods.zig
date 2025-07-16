@@ -7,7 +7,7 @@ pub const Options = struct {
     is_varargs: ?bool = null,
     is_generic: ?bool = null,
     return_type: functions.Options.Return = .{},
-    other_param_count: @import("options.zig").Count = .no_option,
+    other_param_count: ?@import("count.zig").Count = null,
     other_params: []const functions.Options.Param = &.{},
     self: Self = .{},
 
@@ -31,12 +31,11 @@ pub fn has(comptime T: type, comptime name: []const u8, comptime o: Options) z.T
             .calling_convention = o.calling_convention,
             .is_varargs = o.is_varargs,
             .is_generic = o.is_generic,
-            .param_count = switch (o.other_param_count) {
-                .exact_items, .least_items => o.other_param_count,
+            .param_count = if (o.other_param_count) |opc| switch (opc) {
+                .exact_items, .least_items => opc,
                 .least => |least| .{ .least = least + 1 },
                 .exact => |exact| .{ .exact = exact + 1 },
-                .no_option => .{ .least = 1 },
-            },
+            } else .{ .least = 1 },
             .return_type = o.return_type,
             .params = &[_]functions.Options.Param{.{
                 .is_generic = if (o.self.allow_anytype) null else false,

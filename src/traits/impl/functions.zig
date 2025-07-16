@@ -7,7 +7,7 @@ pub const Options = struct {
     is_varargs: ?bool = null,
     return_type: Return = .{},
     params: []const Param = &.{},
-    param_count: @import("options.zig").Count = .no_option,
+    param_count: ?@import("count.zig").Count = null,
 
     pub const Return = struct {
         is_generic: ?bool = null,
@@ -61,8 +61,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             .expect = .withTraitName("The return type must satisfy the trait `{s}`."),
         })) |fail| return fail;
 
-        param_count: switch (o.param_count) {
-            .no_option => {},
+        if (o.param_count) |pc| param_count: switch (pc) {
             .exact_items => continue :param_count .{ .exact = o.params.len },
             .least_items => continue :param_count .{ .least = o.params.len },
             .exact => |exact| if (exact != info.params.len) return r.withFailure(.{
@@ -77,7 +76,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
                 .expect = z.fmt("The parameter count must be at least {}.", .{least}),
                 .actual = z.fmt("The parameter count is {}.", .{info.params.len}),
             }),
-        }
+        };
 
         const len = @min(o.params.len, info.params.len);
         for (0..len) |i| {

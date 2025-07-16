@@ -8,9 +8,9 @@ pub const Options = struct {
     tag: z.Trait = .no_trait,
     layout: containers.AllowLayout = .all,
     variants: Variants = .{},
-    variant_count: Count = .no_option,
+    variant_count: ?Count = null,
 
-    pub const Count = @import("options.zig").Count;
+    pub const Count = @import("count.zig").Count;
 
     pub const Variants = struct {
         slice: []const Variant = &.{},
@@ -62,8 +62,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             // TODO: .repair  = "layout suggestion",
         });
 
-        variants_count: switch (o.variant_count) {
-            .no_option => {},
+        if (o.variant_count) |vc| variants_count: switch (vc) {
             .exact_items => continue :variants_count .{ .exact = o.variants.slice.len },
             .least_items => continue :variants_count .{ .least = o.variants.slice.len },
             .exact => |exact| if (info.fields.len != exact) return r.withFailure(.{
@@ -78,7 +77,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
                 .expect = z.fmt("There must be at least {} variants.", .{least}),
                 .actual = z.fmt("The variant count is {}.", .{info.fields.len}),
             }),
-        }
+        };
 
         for (o.variants.slice) |expect| {
             const actual: std.builtin.Type.UnionField = for (info.fields) |variant| {

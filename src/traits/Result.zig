@@ -40,7 +40,7 @@ pub inline fn withFailure(
     comptime wf: WithFailure,
 ) Result {
     comptime {
-        passing_result.compileErrorOnFailure();
+        passing_result.compileErrorOn(.fail);
         const r = passing_result;
         const info = Info{
             .expect = wf.expect orelse r.info.expect,
@@ -72,7 +72,7 @@ pub inline fn propagateFailingResult(
     comptime info: DependsOnResult,
 ) ?Result {
     comptime {
-        passing_result.compileErrorOnFailure();
+        passing_result.compileErrorOn(.fail);
         var failing_result = if (r.failure) |failure| passing_result.withFailure(.{
             .option = info.option,
             .expect = info.expect,
@@ -126,7 +126,7 @@ pub inline fn propagateFail(
     comptime info: DependsOnTrait,
 ) ?Result {
     comptime {
-        passing_result.compileErrorOnFailure();
+        passing_result.compileErrorOn(.fail);
 
         const r = t.result(T);
         var failing_result = if (r.failure) |failure| passing_result.withFailure(.{
@@ -141,12 +141,13 @@ pub inline fn propagateFail(
         return failing_result;
     }
 }
-inline fn compileErrorOnFailure(comptime r: Result) void {
-    if (r.failure) |f| z.compileError(
-        \\This function is meant to be used on a passing result.
-        \\This result already fails with `error.{s}`.
-        \\
-    , .{@errorName(f.@"error")});
+inline fn compileErrorOn(comptime r: Result, comptime p_or_f: enum { pass, fail }) void {
+    if ((r.failure == null) == (p_or_f == .pass)) z.compileError(
+        \\This function is meant to be used on a {s} result.
+    , .{switch (p_or_f) {
+        .pass => "failing",
+        .fail => "passing",
+    }});
 }
 
 pub fn format(
