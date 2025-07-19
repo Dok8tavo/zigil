@@ -98,7 +98,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
 
         const actual_auto =
             Context == std.array_hash_map.AutoContext(Key) and
-            actual_store_hash == !std.array_hash_map.autoEqlIsCheap(Key);
+            actual_store_hash != std.array_hash_map.autoEqlIsCheap(Key);
 
         if (o.auto) |expect_auto| if (expect_auto != actual_auto) return r.withFailure(.{
             .@"error" = if (actual_auto) error.IsAuto else error.IsNotAuto,

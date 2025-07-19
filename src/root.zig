@@ -23,6 +23,7 @@
 
 const std = @import("std");
 
+pub const interfaces = @import("interfaces/interfaces.zig");
 pub const Trait = @import("traits/Trait.zig");
 
 pub const fmt = std.fmt.comptimePrint;
@@ -164,4 +165,5 @@ pub fn Range(comptime fold: enum { inner, outer }) type {
 
 test {
     _ = Trait;
+    _ = interfaces;
 }
