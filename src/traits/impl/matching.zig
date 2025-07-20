@@ -109,11 +109,7 @@ pub fn uMatchT2(comptime U: type, comptime T: type, comptime pairs: *Pairs) z.Tr
         if (isMatcher(T))
             return r.propagateFailingResult(T.match(U, pairs), .{}) orelse r;
 
-        switch (@typeInfo(T)) {
-            .@"struct" => |info| if (info.is_tuple) {
-                if (r.propagateFailingResult(matchTuple(U, T, pairs), .{})) |fail|
-                    return fail;
-            } else z.compileError("Not implemented yet! `{s}`", .{@typeName(T)}),
+        return switch (@typeInfo(T)) {
             .void,
             .type,
             .bool,
@@ -123,9 +119,64 @@ pub fn uMatchT2(comptime U: type, comptime T: type, comptime pairs: *Pairs) z.Tr
             .comptime_float,
             .@"anyframe",
             .frame,
-            => if (r.propagateFail(T, .is(U), .{})) |fail| return fail,
+            .@"enum",
+            .enum_literal,
+            .@"union",
+            .@"opaque",
+            => r.propagateFail(U, .is(T), .{}) orelse r,
+            .@"struct" => |info| if (info.is_tuple)
+                r.propagateFailingResult(matchTuple(U, T, pairs), .{}) orelse r
+            else
+                r.propagateFail(U, .is(T), .{}) orelse r,
+            .@"fn" => r.propagateFailingResult(matchFn(U, T, pairs), .{}) orelse r,
             else => z.compileError("Not implemented yet!", .{}),
-        }
+        };
+    }
+}
+
+pub fn matchFn(comptime T: type, comptime Fn: type, comptime pairs: *Pairs) z.Trait.Result {
+    comptime {
+        const fns = @import("functions.zig");
+
+        z.Trait.isFunction(.{ .is_generic = false }).assert(Fn);
+
+        const r = z.Trait.Result.init(
+            T,
+            "match-function[" ++ @typeName(Fn) ++ "]",
+            "The type must match the function.",
+        );
+
+        const expect_info = @typeInfo(Fn).@"fn";
+
+        var params: []const fns.Options.Param = &.{};
+        for (expect_info.params) |param| params = params ++ &[_]fns.Options.Param{.{
+            .is_noalias = param.is_noalias,
+            .is_generic = false,
+            .trait = .no_trait,
+        }};
+
+        const match_trait = z.Trait.isFunction(.{
+            .calling_convention = expect_info.calling_convention,
+            .is_var_args = expect_info.is_var_args,
+            .is_generic = false,
+            .param_count = .{ .exact = expect_info.params.len },
+            .params = .many(params),
+        });
+
+        if (r.propagateFail(T, match_trait, .{})) |fail|
+            return fail;
+
+        const actual_info = @typeInfo(T).@"fn";
+
+        for (expect_info.params, actual_info.params) |expect_param, actual_param|
+            if (r.propagateFailingResult(uMatchT2(actual_param.type.?, expect_param.type.?, pairs), .{})) |fail|
+                return fail;
+
+        if (r.propagateFailingResult(uMatchT2(
+            actual_info.return_type.?,
+            expect_info.return_type.?,
+            pairs,
+        ), .{})) |fail| return fail;
 
         return r;
     }

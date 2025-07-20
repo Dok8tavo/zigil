@@ -836,20 +836,27 @@ pub fn match(comptime T: type) z.Trait {
     return fromResultFn(matching._matching.uMatchT, .{T});
 }
 test match {
-    const match_this = match(struct { matching.Anytype, u32 });
+    const match_any_u32 = match(struct { matching.Anytype, u32 });
 
-    try match_this.expect(struct { void, u32 });
-    try match_this.expect(struct { u32, u32 });
-    try match_this.expectError(struct { void }, error.WrongFieldCount);
+    try match_any_u32.expect(struct { void, u32 });
+    try match_any_u32.expect(struct { u32, u32 });
+    try match_any_u32.expectError(struct { void }, error.WrongFieldCount);
 
-    const match_with_int = match(struct { matching.AnyTrait(.isInt(.{})), u32 });
-    try match_with_int.expect(struct { u8, u32 });
-    try match_with_int.expectError(struct { void, u32 }, error.IsVoid);
+    const match_anyint_u32 = match(struct { matching.AnyTrait(.isInt(.{})), u32 });
+    try match_anyint_u32.expect(struct { u8, u32 });
+    try match_anyint_u32.expectError(struct { void, u32 }, error.IsVoid);
 
     const Same = matching.AnyId(.some_id);
-    const match_same = match(struct { Same, Same });
-    try match_same.expect(struct { u8, u8 });
-    try match_same.expect(struct { i8, i8 });
-    try match_same.expect(struct { bool, bool });
-    try match_same.expectError(struct { i8, u8 }, error.Mismatch);
+    const match_same_same = match(struct { Same, Same });
+    try match_same_same.expect(struct { u8, u8 });
+    try match_same_same.expect(struct { i8, i8 });
+    try match_same_same.expect(struct { bool, bool });
+    try match_same_same.expectError(struct { i8, u8 }, error.Mismatch);
+
+    const match_fn_any_int_to_void = match(fn (matching.Anytype, matching.AnyTrait(.isInt(.{}))) void);
+    try match_fn_any_int_to_void.expect(fn (void, i8) void);
+    try match_fn_any_int_to_void.expect(fn (*const u8, usize) void);
+    try match_fn_any_int_to_void.expectError(fn ([]u16, isize, u32) void, error.WrongParamCount);
+    try match_fn_any_int_to_void.expectError(fn (u8, u8) i32, error.WrongType);
+    try match_fn_any_int_to_void.expectError(fn (void, ?u8) void, error.IsOptional);
 }
