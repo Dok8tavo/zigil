@@ -1,0 +1,163 @@
+const z = @import("../../root.zig");
+
+pub const Id = @TypeOf(.enum_literal);
+
+pub const Anytype = Matcher(null, .no_trait);
+
+pub fn AnyId(comptime id: ?Id) type {
+    return Matcher(id, .no_trait);
+}
+
+pub fn AnyTrait(comptime t: z.Trait) type {
+    return Matcher(null, t);
+}
+
+pub fn Matcher(comptime id: ?Id, comptime t: z.Trait) type {
+    return struct {
+        comptime id: ?Id = id,
+        comptime trait: z.Trait = t,
+
+        const Self = @This();
+
+        fn getId() ?Id {
+            return (@This(){}).id;
+        }
+
+        fn getTrait() z.Trait {
+            return (@This(){}).trait;
+        }
+
+        fn match(comptime T: type, comptime p: *Pairs) z.Trait.Result {
+            comptime {
+                if (id) |_|
+                    return matchId(T, p);
+                return t.result(T);
+            }
+        }
+
+        fn matchId(comptime T: type, comptime p: *Pairs) z.Trait.Result {
+            comptime {
+                const r = z.Trait.Result.init(
+                    T,
+                    z.fmt("match[.{s}]", .{@tagName(id.?)}),
+                    z.fmt(
+                        "The type must correspond to `.{s}`.",
+                        .{@tagName(id.?)},
+                    ),
+                );
+
+                if (p.get(id.?)) |U| {
+                    if (U != T) return r.withFailure(.{
+                        .@"error" = error.Mismatch,
+                        .expect = z.fmt(
+                            "The type must correspond to `.{s}`, which is `{s}`.",
+                            .{ @tagName(id.?), @typeName(U) },
+                        ),
+                    });
+                } else p.add(id.?, T);
+
+                return t.result(T);
+            }
+        }
+    };
+}
+
+const Pairs = struct {
+    slice: []const Pair = &.{},
+
+    const Pair = struct { id: Id, type: type };
+
+    fn add(comptime p: *Pairs, comptime id: Id, comptime T: type) void {
+        comptime p.slice = p.slice ++ &[_]Pair{.{ .id = id, .type = T }};
+    }
+
+    fn get(comptime p: Pairs, comptime id: Id) ?type {
+        comptime return for (p.slice) |pair| {
+            if (id == pair.id) break pair.type;
+        } else null;
+    }
+};
+
+fn isMatcher(comptime T: type) bool {
+    comptime return z.Trait.isStruct(.{
+        .field_count = .exact_items,
+        .fields = .many(&.{
+            .{ .name = "id", .trait = .is(?Id), .has_default = true },
+            .{ .name = "trait", .trait = .is(z.Trait), .has_default = true },
+        }),
+    }).check(T) and T == Matcher(
+        (T{}).id,
+        (T{}).trait,
+    );
+}
+
+pub fn uMatchT(comptime U: type, comptime T: type) z.Trait.Result {
+    comptime {
+        var pairs = Pairs{};
+        return uMatchT2(U, T, &pairs);
+    }
+}
+
+pub fn uMatchT2(comptime U: type, comptime T: type, comptime pairs: *Pairs) z.Trait.Result {
+    comptime {
+        const r = z.Trait.Result.init(
+            U,
+            z.fmt("match[{s}]", .{@typeName(T)}),
+            z.fmt("The type must match `{s}`.", .{@typeName(T)}),
+        );
+
+        if (isMatcher(T))
+            return r.propagateFailingResult(T.match(U, pairs), .{}) orelse r;
+
+        switch (@typeInfo(T)) {
+            .@"struct" => |info| if (info.is_tuple) {
+                if (r.propagateFailingResult(matchTuple(U, T, pairs), .{})) |fail|
+                    return fail;
+            } else z.compileError("Not implemented yet! `{s}`", .{@typeName(T)}),
+            .void,
+            .type,
+            .bool,
+            .int,
+            .float,
+            .comptime_int,
+            .comptime_float,
+            .@"anyframe",
+            .frame,
+            => if (r.propagateFail(T, .is(U), .{})) |fail| return fail,
+            else => z.compileError("Not implemented yet!", .{}),
+        }
+
+        return r;
+    }
+}
+
+pub fn matchTuple(comptime T: type, comptime Tuple: type, comptime pairs: *Pairs) z.Trait.Result {
+    const is_tuple = z.Trait.isStruct(.{ .is_tuple = true });
+
+    comptime {
+        is_tuple.assert(Tuple);
+
+        const r = z.Trait.Result.init(
+            T,
+            z.fmt("match-tuple[{s}]", .{@typeName(Tuple)}),
+            z.fmt("The type must match with the tuple `{s}`.", .{@typeName(Tuple)}),
+        );
+
+        if (r.propagateFail(T, is_tuple, .{})) |fail|
+            return fail;
+
+        const actual_info = @typeInfo(T).@"struct";
+        const expect_info = @typeInfo(Tuple).@"struct";
+
+        const has_right_len = z.Trait.isStruct(.{ .field_count = .{ .exact = expect_info.fields.len } });
+
+        if (r.propagateFail(T, has_right_len, .{})) |fail|
+            return fail;
+
+        for (expect_info.fields, actual_info.fields) |expect_field, actual_field|
+            if (r.propagateFailingResult(uMatchT2(actual_field.type, expect_field.type, pairs), .{})) |fail|
+                return fail;
+
+        return r;
+    }
+}

@@ -823,3 +823,33 @@ test can_be_vectorized {
     try can_be_vectorized.expectError(union {}, error.IsUnion);
     try can_be_vectorized.expectError(enum {}, error.IsEnum);
 }
+
+pub const matching = struct {
+    const _matching = @import("impl/matching.zig");
+
+    pub const Anytype = _matching.Anytype;
+    pub const AnyTrait = _matching.AnyTrait;
+    pub const AnyId = _matching.AnyId;
+};
+
+pub fn match(comptime T: type) z.Trait {
+    return fromResultFn(matching._matching.uMatchT, .{T});
+}
+test match {
+    const match_this = match(struct { matching.Anytype, u32 });
+
+    try match_this.expect(struct { void, u32 });
+    try match_this.expect(struct { u32, u32 });
+    try match_this.expectError(struct { void }, error.WrongFieldCount);
+
+    const match_with_int = match(struct { matching.AnyTrait(.isInt(.{})), u32 });
+    try match_with_int.expect(struct { u8, u32 });
+    try match_with_int.expectError(struct { void, u32 }, error.IsVoid);
+
+    const Same = matching.AnyId(.some_id);
+    const match_same = match(struct { Same, Same });
+    try match_same.expect(struct { u8, u8 });
+    try match_same.expect(struct { i8, i8 });
+    try match_same.expect(struct { bool, bool });
+    try match_same.expectError(struct { i8, u8 }, error.Mismatch);
+}
