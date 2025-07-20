@@ -4,7 +4,7 @@ const z = @import("../../root.zig");
 pub const Options = struct {
     calling_convention: ?std.builtin.CallingConvention = null,
     is_generic: ?bool = null,
-    is_varargs: ?bool = null,
+    is_var_args: ?bool = null,
     return_type: Return = .{},
     params: Params = .no_requirement,
     param_count: @import("count.zig").Count = .least_items,
@@ -56,11 +56,11 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             .option = z.fmt("is{s}generic", .{if (is_generic) "-" else "-not-"}),
         });
 
-        if (o.is_varargs) |is_varargs| if (info.is_varargs != is_varargs) return r.withFailure(.{
-            .@"error" = if (is_varargs) error.IsNotVariadic else error.IsVariadic,
-            .expect = z.fmt("The function type {s} be variadic.", .{if (is_varargs) "must" else "can't"}),
-            .actual = z.fmt("The function type {s} variadic.", .{if (is_varargs) "isn't" else "is"}),
-            .option = z.fmt("is{s}variadic", .{if (is_varargs) "-" else "-not-"}),
+        if (o.is_var_args) |is_var_args| if (info.is_var_args != is_var_args) return r.withFailure(.{
+            .@"error" = if (is_var_args) error.IsNotVariadic else error.IsVariadic,
+            .expect = z.fmt("The function type {s} be variadic.", .{if (is_var_args) "must" else "can't"}),
+            .actual = z.fmt("The function type {s} variadic.", .{if (is_var_args) "isn't" else "is"}),
+            .option = z.fmt("is{s}variadic", .{if (is_var_args) "-" else "-not-"}),
         });
 
         if (o.return_type.is_generic) |is_generic| if ((info.is_generic == null) != is_generic) return r.withFailure(.{

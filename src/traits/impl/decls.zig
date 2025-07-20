@@ -27,7 +27,7 @@ pub fn has(comptime T: type, comptime name: []const u8, comptime o: Options) z.T
             .no_option => return r,
             .of_type_which => |t| t.result(@TypeOf(decl)),
             .is_type_which => |t| if (r.propagateFail(@TypeOf(decl), .isKind(.type), .{
-                .option = .fmt("{s}, is-type", .{name}),
+                .option = .str(name ++ ", is-type"),
                 .expect = .str("The declaration must be a type."),
             })) |f| return f else t.result(decl),
         };

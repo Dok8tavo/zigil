@@ -4,7 +4,7 @@ const z = @import("../../root.zig");
 
 pub const Options = struct {
     calling_convention: ?std.builtin.CallingConvention = null,
-    is_varargs: ?bool = null,
+    is_var_args: ?bool = null,
     is_generic: ?bool = null,
     return_type: functions.Options.Return = .{},
     other_param_count: @import("count.zig").Count = .least_items,
@@ -33,7 +33,7 @@ pub fn has(comptime T: type, comptime name: []const u8, comptime o: Options) z.T
 
         if (r.propagateFail(T, .hasDecl(name, .{ .of_type_which = .isFunction(.{
             .calling_convention = o.calling_convention,
-            .is_varargs = o.is_varargs,
+            .is_var_args = o.is_var_args,
             .is_generic = o.is_generic,
             .param_count = switch (o.other_param_count) {
                 .exact_items, .least_items => o.other_param_count,
