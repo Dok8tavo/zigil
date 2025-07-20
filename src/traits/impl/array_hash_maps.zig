@@ -142,7 +142,7 @@ pub fn isContext(comptime T: type, comptime co: ContextOptions) z.Trait.Result {
         );
 
         if (r.propagateFail(T, .hasMethod("hash", .{
-            .is_varargs = false,
+            .is_var_args = false,
             .is_generic = false,
             .return_type = .{ .trait = .is(u32) },
             .other_param_count = .{ .exact = 1 },
@@ -151,7 +151,7 @@ pub fn isContext(comptime T: type, comptime co: ContextOptions) z.Trait.Result {
         })) |fail| return fail;
 
         if (r.propagateFail(T, .hasMethod("eql", .{
-            .is_varargs = false,
+            .is_var_args = false,
             .is_generic = false,
             .return_type = .{ .trait = .is(bool) },
             .other_param_count = .{ .exact = 3 },
