@@ -139,11 +139,10 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             });
 
             if (r.propagateFail(actual.type, expect.trait, .{
-                .option = .withTraitName(z.fmt("has-field[\"{s}\" => {{s}}]", .{actual.name})),
-                .expect = .withTraitName(z.fmt(
-                    "The type of the field \"{s}\" must satisfy the trait `{{s}}`.",
-                    .{actual.name},
-                )),
+                .option = .withTraitName("has-field[\"" ++ actual.name ++ "\" => {s}"),
+                .expect = .withTraitName(
+                    "The type of the field \"" ++ actual.name ++ "\" must satisfy the trait `{s}`.",
+                ),
             })) |fail| return fail;
 
             if (expect.alignment) |expect_align| {
