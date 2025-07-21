@@ -157,9 +157,9 @@ pub fn format(
     writer: anytype,
 ) !void {
     for (r.trace) |info|
-        try writer.print("{}\n", .{info});
+        try writer.print("{f}\n", .{info});
     if (r.failure) |f|
-        try writer.print("{}\n", .{f});
+        try writer.print("{f}\n", .{f});
 }
 
 pub const Info = struct {
