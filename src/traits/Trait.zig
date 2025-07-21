@@ -382,9 +382,9 @@ test isFunction {
     try generic.expect(@TypeOf(z.eql));
     try generic.expectError(fn () void, error.IsNotGeneric);
 
-    const c = isFunction(.{ .calling_convention = .c });
-    try c.expectError(fn () void, error.WrongCallingConvention);
-    try c.expect(fn () callconv(.c) void);
+    const c_callconv = isFunction(.{ .calling_convention = .c });
+    try c_callconv.expectError(fn () void, error.WrongCallingConvention);
+    try c_callconv.expect(fn () callconv(.c) void);
 
     const has_one_param = isFunction(.{ .param_count = .{ .exact = 1 } });
     try has_one_param.expectError(fn () void, error.WrongParamCount);
@@ -822,4 +822,10 @@ test can_be_vectorized {
     try can_be_vectorized.expectError(struct {}, error.IsStruct);
     try can_be_vectorized.expectError(union {}, error.IsUnion);
     try can_be_vectorized.expectError(enum {}, error.IsEnum);
+}
+
+const c = @import("impl/c.zig");
+pub const is_c = Trait{ .result = c.is };
+test is_c {
+    // TODO
 }
