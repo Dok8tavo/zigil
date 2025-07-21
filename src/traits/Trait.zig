@@ -17,7 +17,7 @@ pub inline fn expectError(comptime t: Trait, comptime T: type, comptime expected
 pub inline fn assert(comptime t: Trait, comptime T: type) void {
     comptime {
         const r = t.result(T);
-        if (r.failure != null) z.compileError("{}", .{r});
+        if (r.failure != null) z.compileError("{f}", .{r});
     }
 }
 
