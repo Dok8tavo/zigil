@@ -830,6 +830,7 @@ pub const matching = struct {
     pub const Anytype = _matching.Anytype;
     pub const AnyTrait = _matching.AnyTrait;
     pub const AnyId = _matching.AnyId;
+    pub const Any = _matching.Any;
 };
 
 pub fn match(comptime T: type) z.Trait {
@@ -859,4 +860,14 @@ test match {
     try match_fn_any_int_to_void.expectError(fn ([]u16, isize, u32) void, error.WrongParamCount);
     try match_fn_any_int_to_void.expectError(fn (u8, u8) i32, error.WrongType);
     try match_fn_any_int_to_void.expectError(fn (void, ?u8) void, error.IsOptional);
+
+    const ptr_to_same_int_same_int = match(*const struct {
+        matching.Any(.a, .isInt(.{})),
+        matching.AnyId(.a),
+    });
+    try ptr_to_same_int_same_int.expect(*const struct { u32, u32 });
+    try ptr_to_same_int_same_int.expect(*const struct { i64, i64 });
+    try ptr_to_same_int_same_int.expectError(*struct { i64, i64 }, error.PointerToVar);
+    try ptr_to_same_int_same_int.expectError(*const struct { i64, u32 }, error.Mismatch);
+    ptr_to_same_int_same_int.assert(*const struct { i64, u4 });
 }

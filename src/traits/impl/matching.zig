@@ -2,17 +2,17 @@ const z = @import("../../root.zig");
 
 pub const Id = @TypeOf(.enum_literal);
 
-pub const Anytype = Matcher(null, .no_trait);
+pub const Anytype = Any(null, .no_trait);
 
 pub fn AnyId(comptime id: ?Id) type {
-    return Matcher(id, .no_trait);
+    return Any(id, .no_trait);
 }
 
 pub fn AnyTrait(comptime t: z.Trait) type {
-    return Matcher(null, t);
+    return Any(null, t);
 }
 
-pub fn Matcher(comptime id: ?Id, comptime t: z.Trait) type {
+pub fn Any(comptime id: ?Id, comptime t: z.Trait) type {
     return struct {
         comptime id: ?Id = id,
         comptime trait: z.Trait = t,
@@ -85,7 +85,7 @@ fn isMatcher(comptime T: type) bool {
             .{ .name = "id", .trait = .is(?Id), .has_default = true },
             .{ .name = "trait", .trait = .is(z.Trait), .has_default = true },
         }),
-    }).check(T) and T == Matcher(
+    }).check(T) and T == Any(
         (T{}).id,
         (T{}).trait,
     );
@@ -102,8 +102,8 @@ pub fn uMatchT2(comptime U: type, comptime T: type, comptime pairs: *Pairs) z.Tr
     comptime {
         const r = z.Trait.Result.init(
             U,
-            z.fmt("match[{s}]", .{@typeName(T)}),
-            z.fmt("The type must match `{s}`.", .{@typeName(T)}),
+            "match[" ++ @typeName(T) ++ "]",
+            "The type must match `" ++ @typeName(T) ++ "`.",
         );
 
         if (isMatcher(T))
@@ -129,6 +129,7 @@ pub fn uMatchT2(comptime U: type, comptime T: type, comptime pairs: *Pairs) z.Tr
             else
                 r.propagateFail(U, .is(T), .{}) orelse r,
             .@"fn" => r.propagateFailingResult(matchFn(U, T, pairs), .{}) orelse r,
+            .pointer => r.propagateFailingResult(matchPointer(U, T, pairs), .{}) orelse r,
             else => z.compileError("Not implemented yet!", .{}),
         };
     }
@@ -208,6 +209,41 @@ pub fn matchTuple(comptime T: type, comptime Tuple: type, comptime pairs: *Pairs
         for (expect_info.fields, actual_info.fields) |expect_field, actual_field|
             if (r.propagateFailingResult(uMatchT2(actual_field.type, expect_field.type, pairs), .{})) |fail|
                 return fail;
+
+        return r;
+    }
+}
+
+pub fn matchPointer(comptime T: type, comptime Pointer: type, comptime pairs: *Pairs) z.Trait.Result {
+    comptime {
+        // can't deal with sentinels yet
+        z.Trait.isPointer(.{ .has_sentinel = false }).assert(Pointer);
+
+        const r = z.Trait.Result.init(
+            T,
+            "match-pointer[" ++ @typeName(Pointer) ++ "]",
+            "The type must match the pointer type",
+        );
+
+        const expect_info = @typeInfo(Pointer).pointer;
+
+        if (r.propagateFail(T, .isPointer(.{
+            .has_sentinel = false,
+            .address_space = expect_info.address_space,
+            .alignment = if (expect_info.alignment == @alignOf(expect_info.child))
+                .natural
+            else
+                .{ .custom = expect_info.alignment },
+            .is_allowzero = expect_info.is_allowzero,
+            .is_const = expect_info.is_const,
+            .is_volatile = expect_info.is_volatile,
+            .size = expect_info.size,
+        }), .{})) |fail| return fail;
+
+        const actual_info = @typeInfo(T).pointer;
+
+        if (r.propagateFailingResult(uMatchT2(actual_info.child, expect_info.child, pairs), .{})) |fail|
+            return fail;
 
         return r;
     }
