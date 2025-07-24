@@ -37,7 +37,7 @@ pub fn Any(comptime id: ?Id, comptime t: z.Trait) type {
 
         fn matchId(comptime T: type, comptime p: *Pairs) z.Trait.Result {
             comptime {
-                const r = z.Trait.Result.init(
+                const r = z.Trait.Result.default(
                     T,
                     z.fmt("match[.{s}]", .{@tagName(id.?)}),
                     z.fmt(
@@ -47,7 +47,7 @@ pub fn Any(comptime id: ?Id, comptime t: z.Trait) type {
                 );
 
                 if (p.get(id.?)) |U| {
-                    if (U != T) return r.withFailure(.{
+                    if (U != T) return r.failWith(.{
                         .@"error" = error.Mismatch,
                         .expect = z.fmt(
                             "The type must correspond to `.{s}`, which is `{s}`.",
@@ -100,14 +100,14 @@ pub fn uMatchT(comptime U: type, comptime T: type) z.Trait.Result {
 
 pub fn uMatchT2(comptime U: type, comptime T: type, comptime pairs: *Pairs) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.init(
+        const r = z.Trait.Result.default(
             U,
             "match[" ++ @typeName(T) ++ "]",
             "The type must match `" ++ @typeName(T) ++ "`.",
         );
 
         if (isMatcher(T))
-            return r.propagateFailingResult(T.match(U, pairs), .{}) orelse r;
+            return r.propagateFailResult(T.match(U, pairs), .{}) orelse r;
 
         return switch (@typeInfo(T)) {
             .void,
@@ -125,11 +125,11 @@ pub fn uMatchT2(comptime U: type, comptime T: type, comptime pairs: *Pairs) z.Tr
             .@"opaque",
             => r.propagateFail(U, .is(T), .{}) orelse r,
             .@"struct" => |info| if (info.is_tuple)
-                r.propagateFailingResult(matchTuple(U, T, pairs), .{}) orelse r
+                r.propagateFailResult(matchTuple(U, T, pairs), .{}) orelse r
             else
                 r.propagateFail(U, .is(T), .{}) orelse r,
-            .@"fn" => r.propagateFailingResult(matchFn(U, T, pairs), .{}) orelse r,
-            .pointer => r.propagateFailingResult(matchPointer(U, T, pairs), .{}) orelse r,
+            .@"fn" => r.propagateFailResult(matchFn(U, T, pairs), .{}) orelse r,
+            .pointer => r.propagateFailResult(matchPointer(U, T, pairs), .{}) orelse r,
             else => z.compileError("Not implemented yet!", .{}),
         };
     }
@@ -141,7 +141,7 @@ pub fn matchFn(comptime T: type, comptime Fn: type, comptime pairs: *Pairs) z.Tr
 
         z.Trait.isFunction(.{ .is_generic = false }).assert(Fn);
 
-        const r = z.Trait.Result.init(
+        const r = z.Trait.Result.default(
             T,
             "match-function[" ++ @typeName(Fn) ++ "]",
             "The type must match the function.",
@@ -170,10 +170,10 @@ pub fn matchFn(comptime T: type, comptime Fn: type, comptime pairs: *Pairs) z.Tr
         const actual_info = @typeInfo(T).@"fn";
 
         for (expect_info.params, actual_info.params) |expect_param, actual_param|
-            if (r.propagateFailingResult(uMatchT2(actual_param.type.?, expect_param.type.?, pairs), .{})) |fail|
+            if (r.propagateFailResult(uMatchT2(actual_param.type.?, expect_param.type.?, pairs), .{})) |fail|
                 return fail;
 
-        if (r.propagateFailingResult(uMatchT2(
+        if (r.propagateFailResult(uMatchT2(
             actual_info.return_type.?,
             expect_info.return_type.?,
             pairs,
@@ -189,7 +189,7 @@ pub fn matchTuple(comptime T: type, comptime Tuple: type, comptime pairs: *Pairs
     comptime {
         is_tuple.assert(Tuple);
 
-        const r = z.Trait.Result.init(
+        const r = z.Trait.Result.default(
             T,
             z.fmt("match-tuple[{s}]", .{@typeName(Tuple)}),
             z.fmt("The type must match with the tuple `{s}`.", .{@typeName(Tuple)}),
@@ -207,7 +207,7 @@ pub fn matchTuple(comptime T: type, comptime Tuple: type, comptime pairs: *Pairs
             return fail;
 
         for (expect_info.fields, actual_info.fields) |expect_field, actual_field|
-            if (r.propagateFailingResult(uMatchT2(actual_field.type, expect_field.type, pairs), .{})) |fail|
+            if (r.propagateFailResult(uMatchT2(actual_field.type, expect_field.type, pairs), .{})) |fail|
                 return fail;
 
         return r;
@@ -219,7 +219,7 @@ pub fn matchPointer(comptime T: type, comptime Pointer: type, comptime pairs: *P
         // can't deal with sentinels yet
         z.Trait.isPointer(.{ .has_sentinel = false }).assert(Pointer);
 
-        const r = z.Trait.Result.init(
+        const r = z.Trait.Result.default(
             T,
             "match-pointer[" ++ @typeName(Pointer) ++ "]",
             "The type must match the pointer type",
@@ -242,7 +242,7 @@ pub fn matchPointer(comptime T: type, comptime Pointer: type, comptime pairs: *P
 
         const actual_info = @typeInfo(T).pointer;
 
-        if (r.propagateFailingResult(uMatchT2(actual_info.child, expect_info.child, pairs), .{})) |fail|
+        if (r.propagateFailResult(uMatchT2(actual_info.child, expect_info.child, pairs), .{})) |fail|
             return fail;
 
         return r;

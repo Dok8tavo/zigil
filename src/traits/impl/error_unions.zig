@@ -7,20 +7,20 @@ pub const Options = struct {
 
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.init(T, "is-error-union", "The type must be an error union.");
+        const r = z.Trait.Result.default(T, "is-error-union", "The type must be an error union.");
         if (r.propagateFail(T, .isKind(.error_union), .{})) |fail|
             return fail;
 
         const info = @typeInfo(T).error_union;
 
         if (r.propagateFail(info.error_set, o.error_set, .{
-            .option = .withTraitName("error-set => {s}"),
-            .expect = .withTraitName("The type's error set must satisfy the trait `{s}`"),
+            //.option = .withTraitName("error-set => {s}"),
+            //.expect = .withTraitName("The type's error set must satisfy the trait `{s}`"),
         })) |fail| return fail;
 
         if (r.propagateFail(info.payload, o.payload, .{
-            .option = .withTraitName("payload => {s}"),
-            .expect = .withTraitName("The type's payload must satisfy the trait `{s}`."),
+            //.option = .withTraitName("payload => {s}"),
+            //.expect = .withTraitName("The type's payload must satisfy the trait `{s}`."),
         })) |fail| return fail;
 
         return r;

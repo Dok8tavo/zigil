@@ -51,29 +51,29 @@ pub const Options = struct {
 
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.init(T, "is-struct", "The type must be a struct.");
+        const r = z.Trait.Result.default(T, "is-struct", "The type must be a struct.");
 
         if (r.propagateFail(T, .isKind(.@"struct"), .{})) |fail|
             return fail;
 
         const info = @typeInfo(T).@"struct";
 
-        if (o.is_tuple) |is_tuple| if (info.is_tuple != is_tuple) return r.withFailure(.{
+        if (o.is_tuple) |is_tuple| if (info.is_tuple != is_tuple) return r.failWith(.{
             .@"error" = if (is_tuple) error.IsNotTuple else error.IsTuple,
             .expect = z.fmt("The type {s} be a tuple.", .{if (is_tuple) "must" else "can't"}),
             .actual = z.fmt("The type is {s}.", .{if (is_tuple) "a regular struct" else "a tuple"}),
-            .option = z.fmt("{s}tuple", .{if (is_tuple) "" else "no-"}),
+            //.option = z.fmt("{s}tuple", .{if (is_tuple) "" else "no-"}),
         });
 
-        if (!o.layout.allows(info.layout)) return r.withFailure(.{
+        if (!o.layout.allows(info.layout)) return r.failWith(.{
             .@"error" = error.ForbiddenLayout,
             .expect = z.fmt("The struct can't use the `{s}` layout.", .{@tagName(info.layout)}),
-            .option = z.fmt("forbid-layout[{s}]", .{@tagName(info.layout)}),
+            //.option = z.fmt("forbid-layout[{s}]", .{@tagName(info.layout)}),
             .actual = z.fmt("The struct layout is `{s}`", .{@tagName(info.layout)}),
             // TODO: .repair  = "layout suggestion",
         });
 
-        if (o.backing_integer.is_null) |is_null| if (is_null != (info.backing_integer == null)) return r.withFailure(.{
+        if (o.backing_integer.is_null) |is_null| if (is_null != (info.backing_integer == null)) return r.failWith(.{
             .@"error" = if (is_null) error.NonNullBackingInteger else error.NullBackingInteger,
             // TODO: better messaging
             .expect = z.fmt("The struct {s} specify backing integer.", .{if (is_null) "can't" else "must"}),
@@ -85,22 +85,22 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
         });
 
         if (info.backing_integer) |Bi| if (r.propagateFail(Bi, o.backing_integer.trait, .{
-            .option = .withTraitName("backing-integer => {s}"),
-            .expect = .withTraitName("The backing integer must satisfy the trait `{s}`."),
+            //.option = .withTraitName("backing-integer => {s}"),
+            //.expect = .withTraitName("The backing integer must satisfy the trait `{s}`."),
         })) |fail| return fail;
 
         field_count: switch (o.field_count) {
             .exact_items => if (o.fields.slice) |slice| continue :field_count .{ .exact = slice.len },
             .least_items => if (o.fields.slice) |slice| continue :field_count .{ .least = slice.len },
-            .exact => |exact| if (info.fields.len != exact) return r.withFailure(.{
+            .exact => |exact| if (info.fields.len != exact) return r.failWith(.{
                 .@"error" = error.WrongFieldCount,
-                .option = z.fmt("field-count[=={}]", .{exact}),
+                //.option = z.fmt("field-count[=={}]", .{exact}),
                 .expect = z.fmt("The field count must be exactly {}.", .{exact}),
                 .actual = z.fmt("The field count is {}.", .{info.fields.len}),
             }),
-            .least => |least| if (info.fields.len < least) return r.withFailure(.{
+            .least => |least| if (info.fields.len < least) return r.failWith(.{
                 .@"error" = error.NotEnoughFields,
-                .option = z.fmt("field-count[<={}]", .{least}),
+                //.option = z.fmt("field-count[<={}]", .{least}),
                 .expect = z.fmt("There must be at least {} fields.", .{least}),
                 .actual = z.fmt("The field count is {}.", .{info.fields.len}),
             }),
@@ -109,20 +109,20 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
         if (o.fields.slice) |fields| for (fields) |expect| {
             const actual: std.builtin.Type.StructField = for (info.fields) |field| {
                 if (z.eql(u8, field.name, expect.name)) break field;
-            } else return r.withFailure(.{
+            } else return r.failWith(.{
                 .@"error" = error.MissingField,
                 .expect = z.fmt("The struct type must have a field named \"{s}\".", .{expect.name}),
-                .option = z.fmt("has-field[\"{s}\"]", .{expect.name}),
+                //.option = z.fmt("has-field[\"{s}\"]", .{expect.name}),
             });
 
-            if (expect.has_default) |has_default| if (has_default != (actual.default_value_ptr != null)) return r.withFailure(.{
+            if (expect.has_default) |has_default| if (has_default != (actual.default_value_ptr != null)) return r.failWith(.{
                 .@"error" = if (has_default) error.HasNoDefault else error.HasDefault,
-                .option = z.fmt("has-field[{s}-default]", .{if (has_default) "with" else "wout"}),
+                //.option = z.fmt("has-field[{s}-default]", .{if (has_default) "with" else "wout"}),
                 .expect = z.fmt("The type {s} have a default value.", .{if (has_default) "must" else "can't"}),
                 .actual = z.fmt("The field has {s} default value.", .{if (has_default) "no" else "a"}),
             });
 
-            if (expect.is_comptime) |is_comptime| if (is_comptime != actual.is_comptime) return r.withFailure(.{
+            if (expect.is_comptime) |is_comptime| if (is_comptime != actual.is_comptime) return r.failWith(.{
                 .@"error" = if (is_comptime) error.FieldIsRuntime else error.FieldIsComptime,
                 .expect = z.fmt(
                     "The type's field \"{s}\" must be {s}.",
@@ -139,15 +139,15 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             });
 
             if (r.propagateFail(actual.type, expect.trait, .{
-                .option = .withTraitName("has-field[\"" ++ actual.name ++ "\" => {s}"),
-                .expect = .withTraitName(
-                    "The type of the field \"" ++ actual.name ++ "\" must satisfy the trait `{s}`.",
-                ),
+                //.option = .withTraitName("has-field[\"" ++ actual.name ++ "\" => {s}"),
+                //.expect = .withTraitName(
+                //    "The type of the field \"" ++ actual.name ++ "\" must satisfy the trait `{s}`.",
+                //),
             })) |fail| return fail;
 
             if (expect.alignment) |expect_align| {
-                if (r.propagateFailingResult(expect_align.result(actual.type, actual.alignment), .{
-                    .option = z.fmt("alignment[{s}]", .{expect_align.optionName()}),
+                if (r.propagateFailResult(expect_align.result(actual.type, actual.alignment), .{
+                    //.option = z.fmt("alignment[{s}]", .{expect_align.optionName()}),
                     .expect = z.fmt(
                         "The alignment of the field \"{s}\" must satisfy the given condition.",
                         .{actual.name},

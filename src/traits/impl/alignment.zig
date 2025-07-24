@@ -35,14 +35,14 @@ pub const Other = union(enum) {
 
     pub fn result(comptime o: Other, comptime T: type, comptime alignment: u16) z.Trait.Result {
         comptime {
-            const r = z.Trait.Result.init(T, o.optionName(), "The alignment must be " ++ switch (o) {
+            const r = z.Trait.Result.default(T, o.optionName(), "The alignment must be " ++ switch (o) {
                 .custom => |custom| z.fmt("exactly {}.", .{custom}),
                 .natural => "natural.",
                 .least_custom => |least| z.fmt("at least {}.", .{least}),
                 .least_natural => "at least natural.",
             });
 
-            if (!o.has(@alignOf(T), alignment)) return r.withFailure(.{
+            if (!o.has(@alignOf(T), alignment)) return r.failWith(.{
                 .@"error" = o.err(),
                 .actual = z.fmt("The alignment is {}{s}.", .{ alignment, switch (o) {
                     .natural => z.fmt(" instead of {}", .{@alignOf(T)}),
@@ -62,20 +62,27 @@ pub const Natural = union(enum) {
 
     pub fn result(comptime n: Natural, comptime T: type) z.Trait.Result {
         comptime {
-            var r = z.Trait.Result.init(T, "has-natural-alignment", "");
+            var r = z.Trait.Result.default(
+                T,
+                "has-natural-alignment",
+                z.fmt("The type must have a natural of {s} {d}.", switch (n) {
+                    .exact => |exact| .{ "exactly", exact },
+                    .least => |least| .{ "at least", least },
+                }),
+            );
 
             const actual = @alignOf(T);
 
             switch (n) {
-                .exact => |exact| if (actual != exact) return r.withFailure(.{
+                .exact => |exact| if (actual != exact) return r.failWith(.{
                     .@"error" = error.WrongNaturalAlignment,
-                    .option = z.fmt("[=={}]", .{exact}),
+                    //.option = z.fmt("[=={}]", .{exact}),
                     .expect = z.fmt("The natural alignment of the type must be exactly {}.", .{exact}),
                     .actual = z.fmt("The natural alignment of the type is {}.", .{actual}),
                 }),
-                .least => |least| if (actual < least) return r.withFailure(.{
+                .least => |least| if (actual < least) return r.failWith(.{
                     .@"error" = error.NaturalAlignmentTooSmall,
-                    .option = z.fmt("[>={}]", .{least}),
+                    //.option = z.fmt("[>={}]", .{least}),
                     .expect = z.fmt("The natural alignment of the type must be at least {}.", .{least}),
                     .actual = z.fmt("The natural alignement of the type is {}.", .{actual}),
                 }),

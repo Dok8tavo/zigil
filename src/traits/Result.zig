@@ -1,219 +1,132 @@
-/// Whether the trait failed and why.
-failure: ?Failure,
-/// Information that concerns the current step of the trait.
-info: Info,
-/// Information that concerns the preceding steps of the trait.
-trace: []const Info,
+failure: ?Failure = null,
+trace: Trace = .{},
+default_expect: ?[]const u8 = null,
+default_trait: ?[]const u8 = null,
+default_type: ?[]const u8 = null,
 
-const z = @import("../root.zig");
 const std = @import("std");
+const z = @import("../root.zig");
 
 const Result = @This();
+const WriteError = std.Io.Writer.Error;
 
-pub fn init(
-    comptime T: type,
-    comptime trait: []const u8,
-    comptime default_expect: []const u8,
-) Result {
-    comptime return Result{
-        .failure = null,
-        .info = Info{
-            .type = @typeName(T),
-            .trait = trait,
-            .expect = default_expect,
-        },
-        .trace = &.{},
+pub fn default(comptime @"type": ?type, expect: ?[]const u8, trait: ?[]const u8) Result {
+    return Result{
+        .default_type = if (@"type") |T| @typeName(T) else null,
+        .default_expect = expect,
+        .default_trait = trait,
     };
 }
 
-pub const WithFailure = struct {
+pub fn isPassing(r: Result) bool {
+    return r.failure == null;
+}
+
+pub fn isFailing(r: Result) bool {
+    return r.failure != null;
+}
+
+pub fn failWith(comptime r: Result, comptime fw: FailWith) Result {
+    comptime {
+        r.compileErrorOn(.fail);
+        return Result{
+            .failure = Failure{
+                .@"error" = fw.@"error",
+                .actual = fw.actual,
+                .repair = fw.repair,
+            },
+            .trace = r.trace.with(.{
+                // TODO: better compile error messages for no info and no default fields.
+                .expect = fw.expect orelse r.default_expect.?,
+                .trait = fw.trait orelse r.default_trait.?,
+                .type = fw.type orelse r.default_type.?,
+            }),
+        };
+    }
+}
+pub const FailWith = struct {
     @"error": anyerror,
-    option: ?[]const u8 = null,
-    expect: ?[]const u8 = null,
     actual: []const u8 = "",
     repair: []const u8 = "",
-};
-
-/// This function always returns a failing result.
-pub inline fn withFailure(
-    comptime passing_result: Result,
-    comptime wf: WithFailure,
-) Result {
-    comptime {
-        passing_result.compileErrorOn(.fail);
-        const r = passing_result;
-        const info = Info{
-            .expect = wf.expect orelse r.info.expect,
-            .trait = r.info.trait ++ if (wf.option) |o| "[" ++ o ++ "]" else "",
-            .type = r.info.type,
-        };
-
-        return Result{
-            .info = info,
-            .trace = &[_]Info{info} ++ if (r.trace.len != 0) r.trace[1..] else &[_]Info{},
-            .failure = .{
-                .@"error" = wf.@"error",
-                .actual = wf.actual,
-                .repair = wf.repair,
-            },
-        };
-    }
-}
-
-pub const DependsOnResult = struct {
     expect: ?[]const u8 = null,
-    option: ?[]const u8 = null,
+    trait: ?[]const u8 = null,
+    type: ?[]const u8 = null,
 };
 
-/// This function returns the result only if its failing.
-pub inline fn propagateFailingResult(
-    comptime passing_result: Result,
-    comptime r: Result,
-    comptime info: DependsOnResult,
-) ?Result {
+pub fn propagateFailResult(comptime r1: Result, comptime r2: Result, comptime pi: PropagateInfo) ?Result {
     comptime {
-        passing_result.compileErrorOn(.fail);
-        var failing_result = if (r.failure) |failure| passing_result.withFailure(.{
-            .option = info.option,
-            .expect = info.expect,
-            .@"error" = failure.@"error",
-            .actual = failure.actual,
-            .repair = failure.repair,
-        }) else return null;
-
-        failing_result.trace = &[_]Info{failing_result.info} ++ passing_result.trace ++ r.trace;
-        return failing_result;
+        r1.compileErrorOn(.fail);
+        return if (r2.failure) |f| Result{
+            .failure = f,
+            .trace = .with(.combine(r1.trace, r2.trace), .{
+                // TODO: better compile error messages for no info and no default fields.
+                .expect = pi.expect orelse r1.default_expect.?,
+                .trait = pi.trait orelse r1.default_trait.?,
+                .type = pi.type orelse r1.default_type.?,
+            }),
+        } else null;
     }
 }
-
-pub const DependsOnTrait = struct {
-    expect: Option = .none,
-    option: Option = .none,
-
-    pub const Option = union(enum) {
-        none,
-        resolved: []const u8,
-        unresolved: []const u8,
-
-        pub fn resolve(comptime o: Option, comptime name: []const u8) ?[]const u8 {
-            comptime return switch (o) {
-                .none => null,
-                .resolved => |resolved| resolved,
-                .unresolved => |unresolved| z.fmt(unresolved, .{name}),
-            };
-        }
-
-        pub fn str(comptime s: []const u8) Option {
-            return .{ .resolved = s };
-        }
-
-        pub fn fmt(comptime s: []const u8, comptime args: anytype) Option {
-            return .{ .resolved = z.fmt(s, args) };
-        }
-
-        // TODO: document the fact that "s" contain a placeholder destined to the trait name.
-        pub fn withTraitName(comptime s: []const u8) Option {
-            return .{ .unresolved = s };
-        }
-    };
-};
-
-/// This function returns the result only if its failing.
-pub inline fn propagateFail(
-    comptime passing_result: Result,
+pub fn propagateFail(
+    comptime r: Result,
     comptime T: type,
     comptime t: z.Trait,
-    comptime info: DependsOnTrait,
+    comptime pi: PropagateInfo,
 ) ?Result {
-    comptime {
-        passing_result.compileErrorOn(.fail);
+    comptime return r.propagateFailResult(t.result(T), pi);
+}
+pub const PropagateInfo = struct {
+    expect: ?[]const u8 = null,
+    trait: ?[]const u8 = null,
+    type: ?[]const u8 = null,
+};
 
-        const r = t.result(T);
-        var failing_result = if (r.failure) |failure| passing_result.withFailure(.{
-            .@"error" = failure.@"error",
-            .actual = failure.actual,
-            .repair = failure.repair,
-            .option = info.option.resolve(r.info.trait),
-            .expect = info.expect.resolve(r.info.trait),
-        }) else return null;
+pub const Failure = struct {
+    @"error": anyerror,
+    actual: []const u8 = "",
+    repair: []const u8 = "",
 
-        failing_result.trace = &[_]Info{failing_result.info} ++ passing_result.trace ++ r.trace;
-        return failing_result;
+    pub fn format(f: Failure, w: *std.Io.Writer) WriteError!void {
+        try w.print("[trait `error.{[error]t}`] {[actual]s}\n\t{[repair]s}", f);
     }
-}
-inline fn compileErrorOn(comptime r: Result, comptime p_or_f: enum { pass, fail }) void {
-    if ((r.failure == null) == (p_or_f == .pass)) z.compileError(
-        \\This function is meant to be used on a {s} result.
-    , .{switch (p_or_f) {
-        .pass => "failing",
-        .fail => "passing",
-    }});
-}
+};
 
-pub fn format(
-    r: Result,
-    comptime _: []const u8,
-    _: std.fmt.FormatOptions,
-    writer: anytype,
-) !void {
-    for (r.trace) |info|
-        try writer.print("{f}\n", .{info});
-    if (r.failure) |f|
-        try writer.print("{f}\n", .{f});
-}
+pub const Trace = struct {
+    stack: []const Info = &.{},
+
+    fn with(comptime t: Trace, comptime i: Info) Trace {
+        return Trace{ .stack = &[_]Info{i} ++ t.stack };
+    }
+
+    fn combine(comptime t1: Trace, comptime t2: Trace) Trace {
+        return Trace{ .stack = t1.stack ++ t2.stack };
+    }
+
+    pub fn format(t: Trace, w: *std.Io.Writer) WriteError!void {
+        for (t.stack) |info|
+            try w.print("[trait trace] {f}\n", .{info});
+    }
+};
 
 pub const Info = struct {
     expect: []const u8,
     trait: []const u8,
     type: []const u8,
 
-    pub fn format(
-        i: Info,
-        comptime _: []const u8,
-        _: std.fmt.FormatOptions,
-        writer: anytype,
-    ) !void {
-        try writer.print(
-            "[trait trace] The type `{s}` is required to satisfy the trait `{s}`.\n",
-            .{ i.type, i.trait },
-        );
-
-        if (i.expect.len != 0)
-            try insertAtNewLines("    ", i.expect, writer);
+    pub fn format(i: Info, w: *std.Io.Writer) WriteError!void {
+        try w.print("The type `{[type]s}` is required to satisfy the trait `{[trait]s}`.\n\t{[expect]s}", i);
     }
 };
 
-pub const Failure = struct {
-    actual: []const u8 = "",
-    repair: []const u8 = "",
-    @"error": anyerror,
+pub fn format(r: Result, w: *std.Io.Writer) WriteError!void {
+    try w.print("{f}{?f}", .{ r.trace, r.failure });
+}
 
-    pub fn format(
-        f: Failure,
-        comptime _: []const u8,
-        _: std.fmt.FormatOptions,
-        writer: anytype,
-    ) !void {
-        try writer.print(
-            "[trait `error.{s}`] {s}\n",
-            .{ @errorName(f.@"error"), f.actual },
-        );
-
-        if (f.repair.len != 0)
-            try insertAtNewLines("    ", f.repair, writer);
-    }
-};
-
-fn insertAtNewLines(comptime insert: []const u8, str: []const u8, writer: anytype) !void {
-    var i: usize = 0;
-
-    try writer.writeAll(insert);
-
-    for (str, 0..) |c, j| if (c == '\n') {
-        try writer.writeAll(str[i..j]);
-        try writer.writeAll(insert);
-        i = j;
-    };
-
-    try writer.writeAll(str[i..]);
+inline fn compileErrorOn(comptime r: Result, comptime p_or_f: enum { pass, fail }) void {
+    comptime if (r.isPassing() == (p_or_f == .pass)) z.compileError(
+        \\This function is meant to be used on a {s} result.
+    , .{switch (p_or_f) {
+        .pass => "failing",
+        .fail => "passing",
+    }});
 }

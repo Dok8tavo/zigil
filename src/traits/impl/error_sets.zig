@@ -41,33 +41,33 @@ pub const Options = struct {
 
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.init(T, "is-error-set", "The type must be an error set.");
+        const r = z.Trait.Result.default(T, "is-error-set", "The type must be an error set.");
 
         if (r.propagateFail(T, .isKind(.error_set), .{})) |fail|
             return fail;
 
         const info = @typeInfo(T).error_set;
 
-        if (o.is_any) |is_any| if ((info == null) != is_any) return r.withFailure(.{
+        if (o.is_any) |is_any| if ((info == null) != is_any) return r.failWith(.{
             .@"error" = if (is_any) error.IsNotAnyerror else error.IsAnyerror,
             .actual = z.fmt("The error set is `{s}`.", .{@typeName(T)}),
-            .option = if (is_any) "is-any" else "is-not-any",
+            //.option = if (is_any) "is-any" else "is-not-any",
             .expect = z.fmt(
                 "The error set {s} be `anyerror`.",
                 .{if (is_any) "must" else "can't"},
             ),
         });
 
-        for (o.with.names) |name| if (!has(info, name)) return r.withFailure(.{
+        for (o.with.names) |name| if (!has(info, name)) return r.failWith(.{
             .@"error" = error.MissingError,
             .expect = z.fmt("The error set must contain `error.{s}`.", .{name}),
-            .option = z.fmt("with[{s}]", .{name}),
+            //.option = z.fmt("with[{s}]", .{name}),
         });
 
-        for (o.wout.names) |name| if (has(info, name)) return r.withFailure(.{
+        for (o.wout.names) |name| if (has(info, name)) return r.failWith(.{
             .@"error" = error.ForbiddenError,
             .expect = z.fmt("The error set can't contain `error.{s}`.", .{name}),
-            .option = z.fmt("wout[{s}]", .{name}),
+            //.option = z.fmt("wout[{s}]", .{name}),
         });
 
         return r;

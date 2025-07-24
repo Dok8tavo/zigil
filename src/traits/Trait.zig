@@ -6,6 +6,7 @@ const z = @import("../root.zig");
 const Trait = @This();
 
 pub const Result = @import("Result.zig");
+
 pub inline fn expect(comptime t: Trait, comptime T: type) anyerror!void {
     comptime return if (t.result(T).failure) |f| f.@"error";
 }
@@ -58,7 +59,7 @@ pub inline fn fromResultFn(comptime result_fn: anytype, comptime args: anytype) 
 pub const no_trait = Trait{
     .result = struct {
         fn call(comptime T: type) Result {
-            return .init(T, "no-trait", "No expectations.");
+            return .default(T, "no-trait", "No expectations.");
         }
     }.call,
 };
@@ -454,6 +455,7 @@ test is_container {
 
     try is_container.expectError(comptime_int, error.IsComptimeInt);
     try is_container.expectError(struct { u8 }, error.IsTuple);
+    try is_container.expectError(u8, error.IsInt);
 }
 
 const decls = @import("impl/decls.zig");
@@ -788,7 +790,7 @@ pub const can_be_vectorized = Trait{
     .result = struct {
         pub fn canBeVectorized(comptime T: type) Result {
             comptime {
-                const r = Result.init(
+                const r = Result.default(
                     T,
                     "can-be-vectorized",
                     "The type must be able to be a vector's child type.",
@@ -796,11 +798,11 @@ pub const can_be_vectorized = Trait{
 
                 return switch (@typeInfo(T)) {
                     .bool, .int, .float => r,
-                    .pointer => |pointer| if (pointer.size != .slice) r else r.withFailure(.{
+                    .pointer => |pointer| if (pointer.size != .slice) r else r.failWith(.{
                         .@"error" = error.IsSlice,
                         .actual = "The type is a slice, which can't be the item of a vector.",
                     }),
-                    inline else => |_, tag| r.withFailure(.{
+                    inline else => |_, tag| r.failWith(.{
                         .@"error" = kind.@"error"(tag),
                         .actual = z.fmt("The type is {s}, which can't be the item of a vector.", .{
                             kind.denomination(tag),
@@ -869,5 +871,5 @@ test match {
     try ptr_to_same_int_same_int.expect(*const struct { i64, i64 });
     try ptr_to_same_int_same_int.expectError(*struct { i64, i64 }, error.PointerToVar);
     try ptr_to_same_int_same_int.expectError(*const struct { i64, u32 }, error.Mismatch);
-    ptr_to_same_int_same_int.assert(*const struct { i64, u4 });
+    try ptr_to_same_int_same_int.expectError(*const struct { i64, u4 }, error.Mismatch);
 }
