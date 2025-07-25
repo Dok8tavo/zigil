@@ -57,26 +57,26 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             .@"error" = if (is_generic) error.IsNotGeneric else error.IsGeneric,
             .expect = z.fmt("The function type {s} be generic.", .{if (is_generic) "must" else "can't"}),
             .actual = z.fmt("The function type {s} generic.", .{if (is_generic) "isn't" else "is"}),
-            //.option = z.fmt("is{s}generic", .{if (is_generic) "-" else "-not-"}),
+            .option = z.fmt("is{s}generic", .{if (is_generic) "-" else "-not-"}),
         });
 
         if (o.is_var_args) |is_var_args| if (info.is_var_args != is_var_args) return r.failWith(.{
             .@"error" = if (is_var_args) error.IsNotVariadic else error.IsVariadic,
             .expect = z.fmt("The function type {s} be variadic.", .{if (is_var_args) "must" else "can't"}),
             .actual = z.fmt("The function type {s} variadic.", .{if (is_var_args) "isn't" else "is"}),
-            //.option = z.fmt("is{s}variadic", .{if (is_var_args) "-" else "-not-"}),
+            .option = z.fmt("is{s}variadic", .{if (is_var_args) "-" else "-not-"}),
         });
 
         if (o.return_type.is_generic) |is_generic| if ((info.is_generic == null) != is_generic) return r.failWith(.{
             .@"error" = if (is_generic) error.ReturnIsNotGeneric else error.ReturnIsGeneric,
             .expect = z.fmt("The return type {} be generic.", .{if (is_generic) "must" else "can't"}),
             .actual = z.fmt("The return type {s} generic.", .{if (is_generic) "isn't" else "is"}),
-            //.option = z.fmt("{s}generic-return", .{if (is_generic) "" else "non-"}),
+            .option = z.fmt("{s}generic-return", .{if (is_generic) "" else "non-"}),
         });
 
         if (info.return_type) |Return| if (r.propagateFail(Return, o.return_type.trait, .{
-            //.option = .withTraitName("return => {s}"),
-            //.expect = .withTraitName("The return type must satisfy the trait `{s}`."),
+            .option = .fmtOne("return => {s}", .trait),
+            .expect = .fmtOne("The return type must satisfy the trait `{s}`.", .trait),
         })) |fail| return fail;
 
         param_count: switch (o.param_count) {
@@ -84,13 +84,13 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             .least_items => if (o.params.slice) |params| continue :param_count .{ .least = params.len },
             .exact => |exact| if (exact != info.params.len) return r.failWith(.{
                 .@"error" = error.WrongParamCount,
-                //.option = z.fmt("param-count == {}", .{exact}),
+                .option = z.fmt("param-count == {}", .{exact}),
                 .expect = z.fmt("The parameter count must be exactly {}.", .{exact}),
                 .actual = z.fmt("The parameter count is {}.", .{info.params.len}),
             }),
             .least => |least| if (info.params.len < least) return r.failWith(.{
                 .@"error" = error.TooFewParams,
-                //.option = z.fmt("param-count >= {}", .{least}),
+                .option = z.fmt("param-count >= {}", .{least}),
                 .expect = z.fmt("The parameter count must be at least {}.", .{least}),
                 .actual = z.fmt("The parameter count is {}.", .{info.params.len}),
             }),
@@ -104,20 +104,22 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             if (expect.is_generic) |is_generic| if (is_generic != actual.is_generic) return r.failWith(.{
                 .@"error" = if (is_generic) error.ParamIsNotGeneric else error.ParamIsGeneric,
                 .option = z.fmt("param-{}[{s}generic]", .{ i, if (is_generic) "" else "not-" }),
-                //.expect = z.fmt("The parameter {} {s} be generic.", .{ i, if (is_generic) "must" else "can't" }),
+                .expect = z.fmt("The parameter {} {s} be generic.", .{ i, if (is_generic) "must" else "can't" }),
                 .actual = z.fmt("The parameter {} {s} generic.", .{ i, if (is_generic) "isn't" else "is" }),
             });
 
             if (expect.is_noalias) |is_noalias| if (is_noalias != actual.is_noalias) return r.failWith(.{
                 .@"error" = if (is_noalias) error.ParamIsNotNoalias else error.ParamIsNoalias,
-                //.option = z.fmt("param-{}[{s}noalias]", .{ i, if (is_noalias) "" else "not-" }),
+                .option = z.fmt("param-{}[{s}noalias]", .{ i, if (is_noalias) "" else "not-" }),
                 .expect = z.fmt("The parameter {} {s} be noalias.", .{ i, if (is_noalias) "must" else "can't" }),
                 .actual = z.fmt("The parameter {} {s} noalias.", .{ i, if (is_noalias) "isn't" else "is" }),
             });
 
+            @setEvalBranchQuota(100_000);
             if (actual.type) |Param| if (r.propagateFail(Param, expect.trait, .{
-                //.option = .withTraitName("param => {s}"),
-                //.expect = .withTraitName("The parameter type must satisfy the trait `{s}`."),
+                .option = .fmtOne("param => {s}", .trait),
+                // TODO: what's wrong with this quota?
+                .expect = .fmtOne("The parameter type must satisfy the trait `{s}`.", .trait),
             })) |fail| return fail;
         }
 

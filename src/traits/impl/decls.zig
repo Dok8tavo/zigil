@@ -18,7 +18,7 @@ pub fn has(comptime T: type, comptime name: []const u8, comptime o: Options) z.T
 
         if (!@hasDecl(T, name)) return r.failWith(.{
             .@"error" = error.MissingDeclaration,
-            //.option = z.fmt("\"{s}\"", .{name}),
+            .option = "\"" ++ name ++ "\"",
         });
 
         const decl = @field(T, name);
@@ -27,8 +27,8 @@ pub fn has(comptime T: type, comptime name: []const u8, comptime o: Options) z.T
             .no_option => return r,
             .of_type_which => |t| t.result(@TypeOf(decl)),
             .is_type_which => |t| if (r.propagateFail(@TypeOf(decl), .isKind(.type), .{
-                //.option = .str(name ++ ", is-type"),
-                //.expect = .str("The declaration must be a type."),
+                .option = .str(name ++ ", is-type"),
+                .expect = .str("The declaration must be a type."),
             })) |f| return f else t.result(decl),
         };
 
@@ -38,14 +38,14 @@ pub fn has(comptime T: type, comptime name: []const u8, comptime o: Options) z.T
         return r.propagateFailResult(r2, switch (o) {
             .no_option => unreachable,
             .is_type_which => .{
-                //.option = z.fmt("{s}, is-type-which[{s}]", .{ name, r2.info.trait }),
+                .option = z.fmt("{s}, is-type-which[{s}]", .{ name, r2.info.trait }),
                 .expect = z.fmt(
                     "The declaration must be a type that respect the trait `{s}`.",
                     .{r2.trace.stack[0].trait},
                 ),
             },
             .of_type_which => .{
-                //.option = z.fmt("{s}, of-type-which[{s}]", .{ name, r2.info.trait }),
+                .option = z.fmt("{s}, of-type-which[{s}]", .{ name, r2.info.trait }),
                 .expect = z.fmt(
                     "The declaration's type must respect the trait `{s}`.",
                     .{r2.trace.stack[0].trait},

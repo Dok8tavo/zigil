@@ -76,13 +76,13 @@ pub const Natural = union(enum) {
             switch (n) {
                 .exact => |exact| if (actual != exact) return r.failWith(.{
                     .@"error" = error.WrongNaturalAlignment,
-                    //.option = z.fmt("[=={}]", .{exact}),
+                    .option = z.fmt("[=={}]", .{exact}),
                     .expect = z.fmt("The natural alignment of the type must be exactly {}.", .{exact}),
                     .actual = z.fmt("The natural alignment of the type is {}.", .{actual}),
                 }),
                 .least => |least| if (actual < least) return r.failWith(.{
                     .@"error" = error.NaturalAlignmentTooSmall,
-                    //.option = z.fmt("[>={}]", .{least}),
+                    .option = z.fmt("[>={}]", .{least}),
                     .expect = z.fmt("The natural alignment of the type must be at least {}.", .{least}),
                     .actual = z.fmt("The natural alignement of the type is {}.", .{actual}),
                 }),

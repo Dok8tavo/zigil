@@ -42,7 +42,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
 
         if (o.managed) |expect_managed| if (actual_managed != expect_managed) return r.failWith(.{
             .@"error" = if (actual_managed) error.IsManaged else error.IsUnmanaged,
-            //.option = if (actual_managed) "managed" else "unmanaged",
+            .option = if (actual_managed) "managed" else "unmanaged",
             .expect = z.fmt(
                 "The type must be the {s}managed version of array list.",
                 .{if (expect_managed) "" else "un"},
@@ -54,13 +54,13 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
         });
 
         if (r.propagateFail(Items, .isPointer(.{ .alignment = o.alignment }), .{
-            //.option = .withTraitName("{s}"),
+            .option = .fmtOne("{s}", .trait),
             // TODO: .expect = ...
         })) |fail| return fail;
 
         if (r.propagateFail(info.child, o.item, .{
-            //.option = .withTraitName("item => {s}"),
-            //.expect = .withTraitName("The type of the items must satisfy the trait `{s}`."),
+            .option = .fmtOne("item => {s}", .trait),
+            .expect = .fmtOne("The type of the items must satisfy the trait `{s}`.", .trait),
         })) |fail| return fail;
 
         return r;

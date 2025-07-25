@@ -36,7 +36,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
 
             if (f1 == f2) return r.failWith(.{
                 .@"error" = error.NotEnoughPrecision,
-                //.option = z.fmt("distinguish[{e}, {e}]", .{ pair[0], pair[1] }),
+                .option = z.fmt("distinguish[{e}, {e}]", .{ pair[0], pair[1] }),
                 .expect = z.fmt(
                     "The float type must be able to distinguish {e} from {e}.",
                     .{ pair[0], pair[1] },

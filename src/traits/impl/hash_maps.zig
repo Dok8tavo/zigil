@@ -78,18 +78,18 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
                 return not_hash_map;
 
         if (r.propagateFail(Key, o.key, .{
-            //.option = .withTraitName("K => {s}"),
-            //.expect = .withTraitName("The `Key` type must satisfy the trait `{s}`."),
+            .option = .fmtOne("K => {s}", .trait),
+            .expect = .fmtOne("The `Key` type must satisfy the trait `{s}`.", .trait),
         })) |fail| return fail;
 
         if (r.propagateFail(Val, o.val, .{
-            //.option = .withTraitName("V => {s}"),
-            //.expect = .withTraitName("The `Value` type must satisfy the trait `{s}`."),
+            .option = .fmtOne("V => {s}", .trait),
+            .expect = .fmtOne("The `Value` type must satisfy the trait `{s}`.", .trait),
         })) |fail| return fail;
 
         if (r.propagateFail(Context, o.context, .{
-            //.option = .withTraitName("Context => {s}"),
-            //.expect = .withTraitName("The `Context` type must satisfy the trait `{s}`."),
+            .option = .fmtOne("Context => {s}", .trait),
+            .expect = .fmtOne("The `Context` type must satisfy the trait `{s}`.", .trait),
         })) |fail| return fail;
 
         const actual_auto =
@@ -97,7 +97,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             actual_mlp == std.hash_map.default_max_load_percentage;
         if (o.auto) |expect_auto| if (expect_auto != actual_auto) return r.failWith(.{
             .@"error" = if (actual_auto) error.IsAuto else error.IsNotAuto,
-            //.option = if (expect_auto) "auto" else "not-auto",
+            .option = if (expect_auto) "auto" else "not-auto",
             .expect = z.fmt(
                 "The hash map {s} use the auto context.",
                 .{if (expect_auto) "must" else "can't"},
@@ -106,7 +106,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
 
         if (o.managed) |expect_managed| if (actual_managed != expect_managed) return r.failWith(.{
             .@"error" = if (actual_managed) error.IsManaged else error.IsUnmanaged,
-            //.option = if (expect_managed) "managed" else "unmanaged",
+            .option = if (expect_managed) "managed" else "unmanaged",
             .expect = z.fmt(
                 "The hash map {s} be managed.",
                 .{if (expect_managed) "must" else "can't"},
@@ -115,7 +115,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
 
         if (o.max_load_percentage) |expect_mlp| if (expect_mlp != actual_mlp) return r.failWith(.{
             .@"error" = error.WrongMaxLoadPercentage,
-            //.option = z.fmt("max-load == {}%", .{expect_mlp}),
+            .option = z.fmt("max-load == {}%", .{expect_mlp}),
             .expect = z.fmt("The max load percentage must be {}.", .{expect_mlp}),
             .actual = z.fmt("The max load percentage is {}.", .{actual_mlp}),
         });
@@ -168,11 +168,11 @@ pub fn isContext(comptime T: type, comptime co: ContextOptions) z.Trait.Result {
         })) |fail| return fail;
 
         if (r.propagateFail(HashKey, co.key, .{
-            //.option = .withTraitName("key => {s}"),
+            .option = .fmtOne("key => {s}", .trait),
         })) |fail| return fail;
 
         if (r.propagateFail(T, co.context, .{
-            //.option = .withTraitName("{s}"),
+            .option = .fmtOne("{s}", .trait),
         })) |fail| return fail;
 
         return r;

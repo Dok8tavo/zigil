@@ -102,7 +102,7 @@ pub const PropagateInfo = struct {
 
         pub fn resolve(comptime resolvable: Resolvable, comptime result: Result) []const u8 {
             comptime {
-                const args: std.meta.Tuple(&[_]type{[]const u8} ** resolvable.args.len) = undefined;
+                var args: std.meta.Tuple(&[_]type{[]const u8} ** resolvable.args.len) = undefined;
 
                 for (resolvable.args, &args) |into, *resolved| {
                     resolved.* = switch (into) {

@@ -10,7 +10,7 @@ pub fn uMustBeT(comptime U: type, comptime T: type) z.Trait.Result {
         return if (U == T) r else r.failWith(.{
             .@"error" = error.WrongType,
             .actual = "The type is `" ++ @typeName(U) ++ "`.",
-            //.option = @typeName(T),
+            .option = @typeName(T),
         });
     }
 }

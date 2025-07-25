@@ -14,7 +14,7 @@ pub fn is(comptime T: type, comptime kind: std.builtin.TypeId) z.Trait.Result {
             kind => r,
             else => r.failWith(.{
                 .@"error" = @"error"(actual),
-                //.option = "." ++ @tagName(kind),
+                .option = "." ++ @tagName(kind),
             }),
         };
     }

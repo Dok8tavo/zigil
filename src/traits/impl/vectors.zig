@@ -29,8 +29,8 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
         const info = @typeInfo(T).vector;
         const Child = info.child;
         if (r.propagateFail(Child, o.child, .{
-            //.option = .withTraitName("child => {s}"),
-            //.expect = .withTraitName("The type must be a vector whose child satisfy the trait {s}."),
+            .option = .fmtOne("child => {s}", .trait),
+            .expect = .fmtOne("The type must be a vector whose child satisfy the trait {s}.", .trait),
         })) |fail| return fail;
 
         const suggested = std.simd.suggestVectorLength(Child) orelse 1;
@@ -56,14 +56,14 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
         // TODO: compile error instead?
         if (max < min) return r.failWith(.{
             .@"error" = error.ImpossibleRequirement,
-            //.option = z.fmt("max-len[{}] < min-len[{}]", .{ max, min }),
+            .option = z.fmt("max-len[{}] < min-len[{}]", .{ max, min }),
             .expect = z.fmt("The length of the vector type must be at most {} but at least {}.", .{ max, min }),
         });
 
         if (eql) |eql_len| {
             if (eql_len < min) return r.failWith(.{
                 .@"error" = error.ImpossibleRequirement,
-                //.option = z.fmt("eql-len[{}] < min-len[{}]", .{ eql_len, min }),
+                .option = z.fmt("eql-len[{}] < min-len[{}]", .{ eql_len, min }),
                 .expect = z.fmt("The length of the vector type must be exactly {} but at least {}.", .{ eql_len, min }),
             });
 
@@ -79,21 +79,21 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
         if (eql) |eql_len| return if (eql_len != len) r.failWith(.{
             .@"error" = error.WrongLength,
             .actual = z.fmt("The vector's length is {}.", .{len}),
-            //.option = z.fmt("eql-len[{}]", .{eql_len}),
+            .option = z.fmt("eql-len[{}]", .{eql_len}),
             .expect = z.fmt("The vector's length must be exactly {}.", .{eql_len}),
         }) else r;
 
         if (len < min) return r.failWith(.{
             .@"error" = error.VectorTooShort,
             .actual = z.fmt("The vector's length is {}.", .{len}),
-            //.option = z.fmt("min-len[{}]", .{min}),
+            .option = z.fmt("min-len[{}]", .{min}),
             .expect = z.fmt("The vector's length must be at least {}.", .{min}),
         });
 
         if (max < len) return r.failWith(.{
             .@"error" = error.VectorTooLong,
             .actual = z.fmt("The vector's length is {}.", .{len}),
-            //.option = z.fmt("max-len[{}]", .{max}),
+            .option = z.fmt("max-len[{}]", .{max}),
             .expect = z.fmt("The vector's length must be at most {}.", .{max}),
         });
 
