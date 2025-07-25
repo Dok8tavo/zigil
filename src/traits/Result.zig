@@ -53,32 +53,88 @@ pub const FailWith = struct {
     type: ?[]const u8 = null,
 };
 
-pub fn propagateFailResult(comptime r1: Result, comptime r2: Result, comptime pi: PropagateInfo) ?Result {
+pub fn propagateFailResult(comptime r1: Result, comptime r2: Result, comptime pri: PropagateResultInfo) ?Result {
     comptime {
         r1.compileErrorOn(.fail);
         return if (r2.failure) |f| Result{
             .failure = f,
             .trace = .with(.combine(r1.trace, r2.trace), .{
                 // TODO: better compile error messages for no info and no default fields.
-                .expect = pi.expect orelse r1.default_expect.?,
-                .trait = pi.trait orelse r1.default_trait.?,
-                .type = pi.type orelse r1.default_type.?,
+                .expect = pri.expect orelse r1.default_expect.?,
+                .trait = pri.trait orelse r1.default_trait.?,
+                .type = pri.type orelse r1.default_type.?,
             }),
         } else null;
     }
 }
+pub const PropagateResultInfo = struct {
+    expect: ?[]const u8 = null,
+    trait: ?[]const u8 = null,
+    type: ?[]const u8 = null,
+};
 pub fn propagateFail(
     comptime r: Result,
     comptime T: type,
     comptime t: z.Trait,
     comptime pi: PropagateInfo,
 ) ?Result {
-    comptime return r.propagateFailResult(t.result(T), pi);
+    comptime {
+        r.compileErrorOn(.fail);
+
+        const r2 = t.result(T);
+        if (r2.isPassing())
+            return null;
+
+        return r.propagateFailResult(r2, .{
+            .expect = if (pi.expect) |expect| expect.resolve(r2) else null,
+            .trait = r2.trace.stack[0].trait ++ if (pi.option) |option| "[" ++ option.resolve(r2) ++ "]" else "",
+            .type = if (pi.type) |@"type"| @"type".resolve(r2) else null,
+        });
+    }
 }
 pub const PropagateInfo = struct {
-    expect: ?[]const u8 = null,
-    trait: ?[]const u8 = null,
-    type: ?[]const u8 = null,
+    expect: ?Resolvable = null,
+    option: ?Resolvable = null,
+    type: ?Resolvable = null,
+
+    pub const Resolvable = struct {
+        string: []const u8,
+        args: []const Resolve,
+
+        const Resolve = enum {
+            expect,
+            trait,
+            type,
+        };
+
+        pub fn resolve(comptime resolvable: Resolvable, comptime result: Result) []const u8 {
+            comptime {
+                const args: std.meta.Tuple(&[_]type{[]const u8} ** resolvable.args.len) = undefined;
+
+                for (resolvable.args, &args) |into, *resolved| {
+                    resolved.* = switch (into) {
+                        .expect => result.trace.stack[0].expect,
+                        .trait => result.trace.stack[0].trait,
+                        .type => result.trace.stack[0].type,
+                    };
+                }
+
+                return z.fmt(resolvable.string, args);
+            }
+        }
+
+        pub fn str(string: []const u8) Resolvable {
+            return .fmtMany(string, &.{});
+        }
+
+        pub fn fmtOne(string: []const u8, arg: Resolve) Resolvable {
+            return .fmtMany(string, &.{arg});
+        }
+
+        pub fn fmtMany(string: []const u8, args: []const Resolve) Resolvable {
+            return .{ .string = string, .args = args };
+        }
+    };
 };
 
 pub const Failure = struct {

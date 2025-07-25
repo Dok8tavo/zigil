@@ -143,7 +143,7 @@ pub fn isContext(comptime T: type, comptime co: ContextOptions) z.Trait.Result {
             .return_type = .{ .trait = .is(u64) },
             .other_param_count = .{ .exact = 1 },
         }), .{
-            .expect = "The type must have a `fn hash(self, Key) u64` method.",
+            .expect = .str("The type must have a `fn hash(self, Key) u64` method."),
         })) |fail| return fail;
 
         if (r.propagateFail(T, .hasMethod("eql", .{
@@ -152,7 +152,7 @@ pub fn isContext(comptime T: type, comptime co: ContextOptions) z.Trait.Result {
             .return_type = .{ .trait = .is(bool) },
             .other_param_count = .{ .exact = 2 },
         }), .{
-            .expect = "The type must have `fn eql(self, Key, Key) bool` method.",
+            .expect = .str("The type must have `fn eql(self, Key, Key) bool` method."),
         })) |fail| return fail;
 
         const HashKey = @typeInfo(@TypeOf(T.hash)).@"fn".params[1].type.?;
@@ -160,11 +160,11 @@ pub fn isContext(comptime T: type, comptime co: ContextOptions) z.Trait.Result {
         const EqlKey2 = @typeInfo(@TypeOf(T.eql)).@"fn".params[2].type.?;
 
         if (r.propagateFail(EqlKey1, .is(HashKey), .{
-            .expect = "The second parameters of the `hash` and `eql` methods must have the same type.",
+            .expect = .str("The second parameters of the `hash` and `eql` methods must have the same type."),
         })) |fail| return fail;
 
         if (r.propagateFail(EqlKey2, .is(EqlKey1), .{
-            .expect = "The second and third parameters of the `eql` method must have the same type.",
+            .expect = .str("The second and third parameters of the `eql` method must have the same type."),
         })) |fail| return fail;
 
         if (r.propagateFail(HashKey, co.key, .{

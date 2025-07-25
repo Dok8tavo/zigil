@@ -5,11 +5,11 @@ pub fn uMustBeT(comptime U: type, comptime T: type) z.Trait.Result {
         const r = z.Trait.Result.default(
             U,
             "is",
-            z.fmt("The type must be `{s}`.", .{@typeName(T)}),
+            "The type must be `" ++ @typeName(T) ++ "`.",
         );
         return if (U == T) r else r.failWith(.{
             .@"error" = error.WrongType,
-            .actual = z.fmt("The type is `{s}`.", .{@typeName(U)}),
+            .actual = "The type is `" ++ @typeName(U) ++ "`.",
             //.option = @typeName(T),
         });
     }
