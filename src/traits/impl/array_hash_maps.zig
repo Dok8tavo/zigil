@@ -20,7 +20,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             "The type must come from an `std.ArrayHashMap` function.",
         );
 
-        const not_array_hash_map = r.withFailure(.{
+        const not_array_hash_map = r.failWith(.{
             .@"error" = error.NotArrayHashMap,
             .expect = "The type must come from `std.ArrayHashMap` or `std.ArrayHashMapUnmanaged`.",
         });
@@ -82,25 +82,25 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
                 return not_array_hash_map;
 
         if (r.propagateFail(Key, o.key, .{
-            .option = .withTraitName("K => {s}"),
-            .expect = .withTraitName("The `Key` type must satisfy the trait `{s}`."),
+            .option = .fmtOne("K => {s}", .trait),
+            .expect = .fmtOne("The `Key` type must satisfy the trait `{s}`.", .trait),
         })) |fail| return fail;
 
         if (r.propagateFail(Val, o.val, .{
-            .option = .withTraitName("V => {s}"),
-            .expect = .withTraitName("The `Value` type must satisfy the trait `{s}`."),
+            .option = .fmtOne("V => {s}", .trait),
+            .expect = .fmtOne("The `Value` type must satisfy the trait `{s}`.", .trait),
         })) |fail| return fail;
 
         if (r.propagateFail(Context, o.context, .{
-            .option = .withTraitName("Context => {s}"),
-            .expect = .withTraitName("The `Context` type must satisfy the trait `{s}`."),
+            .option = .fmtOne("Context => {s}", .trait),
+            .expect = .fmtOne("The `Context` type must satisfy the trait `{s}`.", .trait),
         })) |fail| return fail;
 
         const actual_auto =
             Context == std.array_hash_map.AutoContext(Key) and
             actual_store_hash != std.array_hash_map.autoEqlIsCheap(Key);
 
-        if (o.auto) |expect_auto| if (expect_auto != actual_auto) return r.withFailure(.{
+        if (o.auto) |expect_auto| if (expect_auto != actual_auto) return r.failWith(.{
             .@"error" = if (actual_auto) error.IsAuto else error.IsNotAuto,
             .option = if (expect_auto) "auto" else "not-auto",
             .expect = z.fmt(
@@ -109,7 +109,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             ),
         });
 
-        if (o.managed) |expect_managed| if (actual_managed != expect_managed) return r.withFailure(.{
+        if (o.managed) |expect_managed| if (actual_managed != expect_managed) return r.failWith(.{
             .@"error" = if (actual_managed) error.IsManaged else error.IsUnmanaged,
             .option = if (expect_managed) "managed" else "unmanaged",
             .expect = z.fmt(
@@ -118,7 +118,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             ),
         });
 
-        if (o.store_hash) |expect_store_hash| if (actual_store_hash != expect_store_hash) return r.withFailure(.{
+        if (o.store_hash) |expect_store_hash| if (actual_store_hash != expect_store_hash) return r.failWith(.{
             .@"error" = if (actual_store_hash) error.StoreHash else error.NoStoreHash,
             .option = if (expect_store_hash) "store-hash" else "no-store-hash",
             .expect = z.fmt(
@@ -173,11 +173,11 @@ pub fn isContext(comptime T: type, comptime co: ContextOptions) z.Trait.Result {
         })) |fail| return fail;
 
         if (r.propagateFail(HashKey, co.key, .{
-            .option = .withTraitName("key => {s}"),
+            .option = .fmtOne("key => {s}", .trait),
         })) |fail| return fail;
 
         if (r.propagateFail(T, co.context, .{
-            .option = .withTraitName("{s}"),
+            .option = .fmtOne("{s}", .trait),
         })) |fail| return fail;
 
         return r;
