@@ -77,7 +77,7 @@ fn customTrait(comptime T: type) zigil.Trait.Result {
             T, another_trait, .{
                 // This options will help display a good trace by naming the trait with the other
                 // trait like this: `custom-trait[=> another-trait]` instead of just `custom-trait`
-                .option = .withTraitName("=> {s}"),
+                .option = .fmtOne("=> {s}", .trait),
                 // The expect message can also be useful to explain why the other trait is required.
                 .expect = .str("The type must satisfy both traits because ..."),
             },
