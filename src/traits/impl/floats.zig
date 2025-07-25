@@ -34,11 +34,17 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             const f1: T = pair[0];
             const f2: T = pair[1];
 
-            if (f1 == f2) return r.withFailure(.{
+            if (f1 == f2) return r.failWith(.{
                 .@"error" = error.NotEnoughPrecision,
                 .option = z.fmt("distinguish[{e}, {e}]", .{ pair[0], pair[1] }),
-                .expect = z.fmt("The float type must be able to distinguish {e} from {e}.", .{ pair[0], pair[1] }),
-                .actual = z.fmt("Both {e} and {e} are represented as {e}.", .{ pair[0], pair[1], f1 }),
+                .expect = z.fmt(
+                    "The float type must be able to distinguish {e} from {e}.",
+                    .{ pair[0], pair[1] },
+                ),
+                .actual = z.fmt(
+                    "Both {e} and {e} are represented as {e}.",
+                    .{ pair[0], pair[1], f1 },
+                ),
             });
         }
 

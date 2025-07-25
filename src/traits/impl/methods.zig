@@ -47,22 +47,22 @@ pub fn has(comptime T: type, comptime name: []const u8, comptime o: Options) z.T
         }) }), .{})) |fail| return fail;
 
         if (@typeInfo(@TypeOf(@field(T, name))).@"fn".params[0].type) |Self| switch (Self) {
-            T => if (!o.self.allow_value) return r.withFailure(.{
+            T => if (!o.self.allow_value) return r.failWith(.{
                 .@"error" = error.PassByValue,
                 .option = "self-disallow-value",
                 .expect = "The `self` parameter must not be passed by value.",
             }),
-            *T => if (!o.self.allow_var_ptr) return r.withFailure(.{
+            *T => if (!o.self.allow_var_ptr) return r.failWith(.{
                 .@"error" = error.PassByVarPtr,
                 .option = "self-dissalow-var-ptr",
                 .expect = "The `self` parameter must not be passed by var pointer.",
             }),
-            *const T => if (!o.self.allow_const_ptr) return r.withFailure(.{
+            *const T => if (!o.self.allow_const_ptr) return r.failWith(.{
                 .@"error" = error.PassByConstPtr,
                 .option = "self-dissalow-const-ptr",
                 .expect = "The `self` parameter must not be passed by const pointer.",
             }),
-            else => return r.withFailure(.{
+            else => return r.failWith(.{
                 .@"error" = error.NoSelf,
                 .expect = z.fmt(
                     "The type of the first parameter must be `{s}` or a pointer to one.",

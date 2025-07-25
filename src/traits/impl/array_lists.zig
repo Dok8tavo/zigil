@@ -20,7 +20,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             }),
         });
 
-        const not_an_array_list = r.withFailure(.{
+        const not_an_array_list = r.failWith(.{
             .@"error" = error.NotAnArrayList,
             .expect = "The type must come from an `std.ArrayList` kind of function.",
         });
@@ -40,7 +40,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
         if (!actual_managed and !actual_unmanaged)
             return not_an_array_list;
 
-        if (o.managed) |expect_managed| if (actual_managed != expect_managed) return r.withFailure(.{
+        if (o.managed) |expect_managed| if (actual_managed != expect_managed) return r.failWith(.{
             .@"error" = if (actual_managed) error.IsManaged else error.IsUnmanaged,
             .option = if (actual_managed) "managed" else "unmanaged",
             .expect = z.fmt(
@@ -54,13 +54,13 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
         });
 
         if (r.propagateFail(Items, .isPointer(.{ .alignment = o.alignment }), .{
-            .option = .withTraitName("{s}"),
+            .option = .fmtOne("{s}", .trait),
             // TODO: .expect = ...
         })) |fail| return fail;
 
         if (r.propagateFail(info.child, o.item, .{
-            .option = .withTraitName("item => {s}"),
-            .expect = .withTraitName("The type of the items must satisfy the trait `{s}`."),
+            .option = .fmtOne("item => {s}", .trait),
+            .expect = .fmtOne("The type of the items must satisfy the trait `{s}`.", .trait),
         })) |fail| return fail;
 
         return r;

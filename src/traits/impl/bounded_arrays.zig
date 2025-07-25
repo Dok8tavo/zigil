@@ -16,7 +16,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             "The type must come from the `std.BoundedArray` or the `std.BoundedArrayAligned` function.",
         );
 
-        const not_bounded_array = r.withFailure(.{ .@"error" = error.NotBoundedArray });
+        const not_bounded_array = r.failWith(.{ .@"error" = error.NotBoundedArray });
 
         if (!z.Trait.isStruct(.{
             .field_count = .{ .exact = 2 },
@@ -33,18 +33,18 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             return not_bounded_array;
 
         if (r.propagateFail(ActualItem, o.item, .{
-            .option = .withTraitName("Item => {s}"),
-            .expect = .withTraitName("The type of the bounded array's items must satisfy the trait `{s}`."),
+            .option = .fmtOne("Item => {s}", .trait),
+            .expect = .fmtOne("The type of the bounded array's items must satisfy the trait `{s}`.", .trait),
         })) |fail| return fail;
 
-        if (o.capacity.first) |first| if (actual_capacity < first) return r.withFailure(.{
+        if (o.capacity.first) |first| if (actual_capacity < first) return r.failWith(.{
             .@"error" = error.CapacityTooSmall,
             .option = z.fmt("{} <= cap", .{first}),
             .expect = z.fmt("The capacity of the bounded array must be at least {}.", .{first}),
             .actual = z.fmt("The capacity of the bounded array is {}.", .{actual_capacity}),
         });
 
-        if (o.capacity.last) |last| if (last < actual_capacity) return r.withFailure(.{
+        if (o.capacity.last) |last| if (last < actual_capacity) return r.failWith(.{
             .@"error" = error.CapacityTooBig,
             .option = z.fmt("cap <= {}", .{last}),
             .expect = z.fmt("The capacity of the bounded array must be at most {}.", .{last}),
