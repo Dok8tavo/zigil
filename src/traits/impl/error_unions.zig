@@ -14,13 +14,13 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
         const info = @typeInfo(T).error_union;
 
         if (r.propagateFail(info.error_set, o.error_set, .{
-            .option = .withTraitName("error-set => {s}"),
-            .expect = .withTraitName("The type's error set must satisfy the trait `{s}`"),
+            .option = .fmtOne("error-set => {s}", .trait),
+            .expect = .fmtOne("The type's error set must satisfy the trait `{s}`", .trait),
         })) |fail| return fail;
 
         if (r.propagateFail(info.payload, o.payload, .{
-            .option = .withTraitName("payload => {s}"),
-            .expect = .withTraitName("The type's payload must satisfy the trait `{s}`."),
+            .option = .fmtOne("payload => {s}", .trait),
+            .expect = .fmtOne("The type's payload must satisfy the trait `{s}`.", .trait),
         })) |fail| return fail;
 
         return r;

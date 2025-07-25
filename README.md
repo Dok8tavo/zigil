@@ -13,16 +13,25 @@ is_float_vector.assert(SomeType);
 ```
 
 If the type fails to satisfy the conditions, the `assert` function will emit a
-compile error:
+compile error, for example if `SomeType` is `@Vector(16, u8)`:
 
 ```
-error: [trait trace] The type `@Vector(8, u8)` is required to satisfy the trait `is-vector[child => is-float]`.
-                              The type must be a vector whose child satisfy the trait is-float.
-                          [trait trace] The type `u8` is required to satisfy the trait `is-float`.
-                              The type must be a floating point.
-                          [trait trace] The type `u8` is required to satisfy the trait `is-kind[.float]`.
-                              The type is an integer.
-                          [trait `error.IsInt`]
+src/whatever/the/location: error: [trait info] `@Vector(16, u8)` => `is-vector[child => is-float]`.
+                                      The type must be a vector whose child satisfy the trait is-float.
+                                  [trait info] `u8` => `is-float`.
+                                      The type must be a floating point.
+                                  [trait info] `u8` => `is-kind[.float]`.
+                                      The type is an integer
+                                  [trait error (IsInt)] 
+                          
+    @compileError(std.fmt.comptimePrint(format, args));
+    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/traits/Trait.zig:21:46: note: called at comptime here
+        if (r.failure != null) z.compileError("{f}", .{r});
+                               ~~~~~~~~~~~~~~^~~~~~~~~~~~~
+src/whatever/the/location: note: called inline here
+    is_float_vector.assert(SomeType);
+    ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~
 ```
 
 ### Custom traits

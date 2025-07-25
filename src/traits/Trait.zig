@@ -6,6 +6,7 @@ const z = @import("../root.zig");
 const Trait = @This();
 
 pub const Result = @import("Result.zig");
+
 pub inline fn expect(comptime t: Trait, comptime T: type) anyerror!void {
     comptime return if (t.result(T).failure) |f| f.@"error";
 }
@@ -454,6 +455,7 @@ test is_container {
 
     try is_container.expectError(comptime_int, error.IsComptimeInt);
     try is_container.expectError(struct { u8 }, error.IsTuple);
+    try is_container.expectError(u8, error.IsInt);
 }
 
 const decls = @import("impl/decls.zig");
@@ -796,11 +798,11 @@ pub const can_be_vectorized = Trait{
 
                 return switch (@typeInfo(T)) {
                     .bool, .int, .float => r,
-                    .pointer => |pointer| if (pointer.size != .slice) r else r.withFailure(.{
+                    .pointer => |pointer| if (pointer.size != .slice) r else r.failWith(.{
                         .@"error" = error.IsSlice,
                         .actual = "The type is a slice, which can't be the item of a vector.",
                     }),
-                    inline else => |_, tag| r.withFailure(.{
+                    inline else => |_, tag| r.failWith(.{
                         .@"error" = kind.@"error"(tag),
                         .actual = z.fmt("The type is {s}, which can't be the item of a vector.", .{
                             kind.denomination(tag),
@@ -828,4 +830,52 @@ const c = @import("impl/c.zig");
 pub const is_c = Trait{ .result = c.is };
 test is_c {
     // TODO
+}
+
+pub const matching = struct {
+    const _matching = @import("impl/matching.zig");
+
+    pub const Anytype = _matching.Anytype;
+    pub const AnyTrait = _matching.AnyTrait;
+    pub const AnyId = _matching.AnyId;
+    pub const Any = _matching.Any;
+};
+
+pub fn match(comptime T: type) z.Trait {
+    return fromResultFn(matching._matching.uMatchT, .{T});
+}
+test match {
+    const match_any_u32 = match(struct { matching.Anytype, u32 });
+
+    try match_any_u32.expect(struct { void, u32 });
+    try match_any_u32.expect(struct { u32, u32 });
+    try match_any_u32.expectError(struct { void }, error.WrongFieldCount);
+
+    const match_anyint_u32 = match(struct { matching.AnyTrait(.isInt(.{})), u32 });
+    try match_anyint_u32.expect(struct { u8, u32 });
+    try match_anyint_u32.expectError(struct { void, u32 }, error.IsVoid);
+
+    const Same = matching.AnyId(.some_id);
+    const match_same_same = match(struct { Same, Same });
+    try match_same_same.expect(struct { u8, u8 });
+    try match_same_same.expect(struct { i8, i8 });
+    try match_same_same.expect(struct { bool, bool });
+    try match_same_same.expectError(struct { i8, u8 }, error.Mismatch);
+
+    const match_fn_any_int_to_void = match(fn (matching.Anytype, matching.AnyTrait(.isInt(.{}))) void);
+    try match_fn_any_int_to_void.expect(fn (void, i8) void);
+    try match_fn_any_int_to_void.expect(fn (*const u8, usize) void);
+    try match_fn_any_int_to_void.expectError(fn ([]u16, isize, u32) void, error.WrongParamCount);
+    try match_fn_any_int_to_void.expectError(fn (u8, u8) i32, error.WrongType);
+    try match_fn_any_int_to_void.expectError(fn (void, ?u8) void, error.IsOptional);
+
+    const ptr_to_same_int_same_int = match(*const struct {
+        matching.Any(.a, .isInt(.{})),
+        matching.AnyId(.a),
+    });
+    try ptr_to_same_int_same_int.expect(*const struct { u32, u32 });
+    try ptr_to_same_int_same_int.expect(*const struct { i64, i64 });
+    try ptr_to_same_int_same_int.expectError(*struct { i64, i64 }, error.PointerToVar);
+    try ptr_to_same_int_same_int.expectError(*const struct { i64, u32 }, error.Mismatch);
+    try ptr_to_same_int_same_int.expectError(*const struct { i64, u4 }, error.Mismatch);
 }
