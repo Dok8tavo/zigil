@@ -10,7 +10,7 @@ pub const Options = struct {
 
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(
+        const r = z.Trait.Result.init(
             T,
             "is-bounded-array",
             "The type must come from the `std.BoundedArray` or the `std.BoundedArrayAligned` function.",

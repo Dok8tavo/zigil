@@ -37,7 +37,7 @@ pub const Options = struct {
 
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(
+        const r = z.Trait.Result.init(
             T,
             "is-function",
             "The type must be a function.",

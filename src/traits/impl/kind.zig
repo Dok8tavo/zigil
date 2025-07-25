@@ -4,7 +4,7 @@ const z = @import("../../root.zig");
 pub fn is(comptime T: type, comptime kind: std.builtin.TypeId) z.Trait.Result {
     comptime {
         const actual = @typeInfo(T);
-        const r = z.Trait.Result.default(
+        const r = z.Trait.Result.init(
             T,
             "is-kind",
             "The type is " ++ denomination(actual),

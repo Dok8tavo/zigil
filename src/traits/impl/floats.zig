@@ -26,7 +26,7 @@ pub const Options = struct {
 
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(T, "is-float", "The type must be a floating point.");
+        const r = z.Trait.Result.init(T, "is-float", "The type must be a floating point.");
         if (r.propagateFail(T, .isKind(.float), .{})) |fail|
             return fail;
 

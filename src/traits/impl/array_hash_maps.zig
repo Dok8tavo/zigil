@@ -14,7 +14,7 @@ pub const Options = struct {
 
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(
+        const r = z.Trait.Result.init(
             T,
             "is-array-hash-map",
             "The type must come from an `std.ArrayHashMap` function.",
@@ -135,7 +135,7 @@ pub const ContextOptions = @import("hash_maps.zig").ContextOptions;
 
 pub fn isContext(comptime T: type, comptime co: ContextOptions) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(
+        const r = z.Trait.Result.init(
             T,
             "is-array-hash-map-context",
             "The type must be suitable as an array hash map context.",

@@ -37,7 +37,7 @@ pub const Options = struct {
 
 pub fn has(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(T, "has-size", "");
+        const r = z.Trait.Result.init(T, "has-size", "TODO");
 
         switch (@typeInfo(T)) {
             else => {},

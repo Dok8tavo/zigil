@@ -32,7 +32,7 @@ pub const AllowLayout = struct {
 
 pub fn is(comptime T: type) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(T, "is-container", "The type must be able to contain declarations.");
+        const r = z.Trait.Result.init(T, "is-container", "The type must be able to contain declarations.");
         return switch (@typeInfo(T)) {
             .@"opaque", .@"enum", .@"union" => r,
             .@"struct" => |@"struct"| if (!@"struct".is_tuple) r else r.failWith(.{

@@ -10,7 +10,7 @@ pub const Options = struct {
 
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(T, "is-int", "The type must be an integer.");
+        const r = z.Trait.Result.init(T, "is-int", "The type must be an integer.");
 
         if (r.propagateFail(T, .isKind(.int), .{})) |fail|
             return fail;

@@ -21,7 +21,7 @@ pub const Options = struct {
 
 pub fn has(comptime T: type, comptime name: []const u8, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(
+        const r = z.Trait.Result.init(
             T,
             z.fmt("has-method[{s}]", .{name}),
             z.fmt("The type must have a \"{s}\" method.", .{name}),

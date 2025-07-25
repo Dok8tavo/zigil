@@ -35,7 +35,7 @@ pub const Other = union(enum) {
 
     pub fn result(comptime o: Other, comptime T: type, comptime alignment: u16) z.Trait.Result {
         comptime {
-            const r = z.Trait.Result.default(T, o.optionName(), "The alignment must be " ++ switch (o) {
+            const r = z.Trait.Result.init(T, o.optionName(), "The alignment must be " ++ switch (o) {
                 .custom => |custom| z.fmt("exactly {}.", .{custom}),
                 .natural => "natural.",
                 .least_custom => |least| z.fmt("at least {}.", .{least}),
@@ -62,7 +62,7 @@ pub const Natural = union(enum) {
 
     pub fn result(comptime n: Natural, comptime T: type) z.Trait.Result {
         comptime {
-            var r = z.Trait.Result.default(
+            var r = z.Trait.Result.init(
                 T,
                 "has-natural-alignment",
                 z.fmt("The type must have a natural of {s} {d}.", switch (n) {

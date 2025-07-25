@@ -24,7 +24,7 @@ pub const Options = struct {
 
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(T, "is-enum", "The type must be an enum.");
+        const r = z.Trait.Result.init(T, "is-enum", "The type must be an enum.");
         if (r.propagateFail(T, .isKind(.@"enum"), .{})) |fail|
             return fail;
 

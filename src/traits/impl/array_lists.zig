@@ -10,7 +10,7 @@ pub const Options = struct {
 
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(T, "is-array-list", "The type must be an array list.");
+        const r = z.Trait.Result.init(T, "is-array-list", "The type must be an array list.");
 
         const has_items = z.Trait.isStruct(.{
             .field_count = .least_items,

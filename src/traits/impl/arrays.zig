@@ -7,7 +7,7 @@ pub const Options = struct {
 
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(T, "is-array", "The type must be an array.");
+        const r = z.Trait.Result.init(T, "is-array", "The type must be an array.");
 
         if (r.propagateFail(T, .isKind(.array), .{})) |fail|
             return fail;

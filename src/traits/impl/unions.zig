@@ -37,7 +37,7 @@ pub const Options = struct {
 
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(T, "is-union", "The type must be a union.");
+        const r = z.Trait.Result.init(T, "is-union", "The type must be a union.");
 
         if (r.propagateFail(T, .isKind(.@"union"), .{})) |fail|
             return fail;

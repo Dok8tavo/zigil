@@ -7,7 +7,7 @@ pub const Options = struct {
 
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(T, "is-error-union", "The type must be an error union.");
+        const r = z.Trait.Result.init(T, "is-error-union", "The type must be an error union.");
         if (r.propagateFail(T, .isKind(.error_union), .{})) |fail|
             return fail;
 

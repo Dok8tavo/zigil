@@ -59,7 +59,7 @@ pub inline fn fromResultFn(comptime result_fn: anytype, comptime args: anytype) 
 pub const no_trait = Trait{
     .result = struct {
         fn call(comptime T: type) Result {
-            return .default(T, "no-trait", "No expectations.");
+            return .init(T, "no-trait", "No expectations.");
         }
     }.call,
 };
@@ -790,7 +790,7 @@ pub const can_be_vectorized = Trait{
     .result = struct {
         pub fn canBeVectorized(comptime T: type) Result {
             comptime {
-                const r = Result.default(
+                const r = Result.init(
                     T,
                     "can-be-vectorized",
                     "The type must be able to be a vector's child type.",

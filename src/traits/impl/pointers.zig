@@ -18,7 +18,7 @@ pub const Options = struct {
 
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(T, "is-pointer", "The type is a pointer.");
+        const r = z.Trait.Result.init(T, "is-pointer", "The type is a pointer.");
 
         if (r.propagateFail(T, .isKind(.pointer), .{})) |fail|
             return fail;

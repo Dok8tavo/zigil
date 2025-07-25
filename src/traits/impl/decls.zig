@@ -8,7 +8,7 @@ pub const Options = union(enum) {
 
 pub fn has(comptime T: type, comptime name: []const u8, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(T, "has-decl", z.fmt(
+        const r = z.Trait.Result.init(T, "has-decl", z.fmt(
             "The type must have a declaration named \"{s}\".",
             .{name},
         ));

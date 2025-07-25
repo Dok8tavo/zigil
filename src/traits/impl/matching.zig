@@ -37,7 +37,7 @@ pub fn Any(comptime id: ?Id, comptime t: z.Trait) type {
 
         fn matchId(comptime T: type, comptime p: *Pairs) z.Trait.Result {
             comptime {
-                const r = z.Trait.Result.default(
+                const r = z.Trait.Result.init(
                     T,
                     z.fmt("match[.{s}]", .{@tagName(id.?)}),
                     z.fmt(
@@ -100,7 +100,7 @@ pub fn uMatchT(comptime U: type, comptime T: type) z.Trait.Result {
 
 pub fn uMatchT2(comptime U: type, comptime T: type, comptime pairs: *Pairs) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(
+        const r = z.Trait.Result.init(
             U,
             "match[" ++ @typeName(T) ++ "]",
             "The type must match `" ++ @typeName(T) ++ "`.",
@@ -141,7 +141,7 @@ pub fn matchFn(comptime T: type, comptime Fn: type, comptime pairs: *Pairs) z.Tr
 
         z.Trait.isFunction(.{ .is_generic = false }).assert(Fn);
 
-        const r = z.Trait.Result.default(
+        const r = z.Trait.Result.init(
             T,
             "match-function[" ++ @typeName(Fn) ++ "]",
             "The type must match the function.",
@@ -189,7 +189,7 @@ pub fn matchTuple(comptime T: type, comptime Tuple: type, comptime pairs: *Pairs
     comptime {
         is_tuple.assert(Tuple);
 
-        const r = z.Trait.Result.default(
+        const r = z.Trait.Result.init(
             T,
             z.fmt("match-tuple[{s}]", .{@typeName(Tuple)}),
             z.fmt("The type must match with the tuple `{s}`.", .{@typeName(Tuple)}),
@@ -219,7 +219,7 @@ pub fn matchPointer(comptime T: type, comptime Pointer: type, comptime pairs: *P
         // can't deal with sentinels yet
         z.Trait.isPointer(.{ .has_sentinel = false }).assert(Pointer);
 
-        const r = z.Trait.Result.default(
+        const r = z.Trait.Result.init(
             T,
             "match-pointer[" ++ @typeName(Pointer) ++ "]",
             "The type must match the pointer type",

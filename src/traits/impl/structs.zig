@@ -51,7 +51,7 @@ pub const Options = struct {
 
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(T, "is-struct", "The type must be a struct.");
+        const r = z.Trait.Result.init(T, "is-struct", "The type must be a struct.");
 
         if (r.propagateFail(T, .isKind(.@"struct"), .{})) |fail|
             return fail;

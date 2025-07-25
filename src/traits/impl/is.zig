@@ -2,7 +2,7 @@ const z = @import("../../root.zig");
 
 pub fn uMustBeT(comptime U: type, comptime T: type) z.Trait.Result {
     comptime {
-        const r = z.Trait.Result.default(
+        const r = z.Trait.Result.init(
             U,
             "is",
             "The type must be `" ++ @typeName(T) ++ "`.",
