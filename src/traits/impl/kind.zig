@@ -7,7 +7,7 @@ pub fn is(comptime T: type, comptime kind: std.builtin.TypeId) z.Trait.Result {
         const r = z.Trait.Result.init(
             T,
             "is-kind",
-            "The type is " ++ denomination(actual),
+            "The type is " ++ denomination(actual) ++ ".",
         );
 
         return switch (@typeInfo(T)) {
