@@ -22,6 +22,24 @@ pub inline fn assert(comptime t: Trait, comptime T: type) void {
     }
 }
 
+pub inline fn assertError(comptime t: Trait, comptime T: type, comptime e: ?anyerror) void {
+    comptime {
+        const r = t.result(T);
+        if (r.failure == null) z.compileError(
+            "[trait unintended pass] The trait should've thrown {s}.\n{f}",
+            .{ if (e) |err| z.fmt("`error.{t}`", .{err}) else "an error", r },
+        );
+
+        if (e == null)
+            return;
+
+        if (r.failure.?.@"error" != e.?) z.compileError(
+            "[trait unintended fail] The trait should've thrown `error.{t}`.\n{f}",
+            .{ e.?, r },
+        );
+    }
+}
+
 pub inline fn check(comptime t: Trait, comptime T: type) bool {
     comptime return t.result(T).failure == null;
 }
