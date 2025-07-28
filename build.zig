@@ -33,10 +33,26 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const fail = b.addExecutable(.{
+        .name = "fail",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("fail/root.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+
+    fail.root_module.addImport("zigil", mod);
+
     const test_exe = b.addTest(.{ .root_module = mod });
     const test_run = b.addRunArtifact(test_exe);
 
-    if (b.args) |args| test_run.addArgs(args);
+    const fail_config = b.addOptions();
+    if (b.args) |args| {
+        test_run.addArgs(args);
+        for (args) |arg| fail_config.addOption(void, arg, {});
+    }
+    fail.root_module.addOptions("config", fail_config);
 
     const lib = b.addLibrary(.{ .name = "zigil", .root_module = mod });
     const doc = b.addInstallDirectory(.{
@@ -45,10 +61,12 @@ pub fn build(b: *std.Build) void {
         .source_dir = lib.getEmittedDocs(),
     });
 
+    const fail_step = b.step("fail", "Attempt to build a failing executable");
     const test_step = b.step("test", "Build & Run the tests");
     const doc_step = b.step("doc", "Build & Install the documentation");
     const zls_step = b.step("zls", "A step for ZLS to use");
 
+    fail_step.dependOn(&fail.step);
     test_step.dependOn(&test_run.step);
     doc_step.dependOn(&doc.step);
     zls_step.dependOn(&test_exe.step);
