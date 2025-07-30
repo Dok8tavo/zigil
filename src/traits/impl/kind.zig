@@ -7,7 +7,7 @@ pub fn is(comptime T: type, comptime kind: std.builtin.TypeId) z.Trait.Result {
         const r = z.Trait.Result.init(
             T,
             "is-kind",
-            "The type is " ++ denomination(actual),
+            "The type must be " ++ denomination(kind) ++ ".",
         );
 
         return switch (@typeInfo(T)) {
@@ -15,6 +15,7 @@ pub fn is(comptime T: type, comptime kind: std.builtin.TypeId) z.Trait.Result {
             else => r.failWith(.{
                 .@"error" = @"error"(actual),
                 .option = "." ++ @tagName(kind),
+                .actual = "The type actually is " ++ denomination(actual) ++ ".",
             }),
         };
     }
