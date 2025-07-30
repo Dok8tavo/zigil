@@ -26,4 +26,6 @@ fn ref(comptime space: type, comptime name: []const u8) void {
     }
 }
 
-pub const fail = struct {};
+pub const fail = struct {
+    pub const trait = @import("trait.zig");
+};
