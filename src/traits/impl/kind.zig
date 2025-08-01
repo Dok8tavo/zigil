@@ -7,7 +7,7 @@ pub fn is(comptime T: type, comptime kind: std.builtin.TypeId) z.Trait.Result {
         const r = z.Trait.Result.init(
             T,
             "is-kind",
-            "The type is " ++ denomination(actual),
+            "The type must be " ++ denomination(kind) ++ ".",
         );
 
         return switch (@typeInfo(T)) {
@@ -15,6 +15,7 @@ pub fn is(comptime T: type, comptime kind: std.builtin.TypeId) z.Trait.Result {
             else => r.failWith(.{
                 .@"error" = @"error"(actual),
                 .option = "." ++ @tagName(kind),
+                .actual = "The type actually is " ++ denomination(actual) ++ ".",
             }),
         };
     }
@@ -78,4 +79,24 @@ pub fn @"error"(comptime kind: std.builtin.TypeId) anyerror {
         .pointer => error.IsPointer,
         .@"opaque" => error.IsOpaque,
     };
+}
+
+inline fn repair(comptime expect: std.builtin.TypeId, comptime actual: std.builtin.Type) []const u8 {
+    comptime {
+        switch (actual) {
+            .optional => |optional| if (@typeInfo(optional.child) == expect)
+                return "Consider using `orelse` or `.?` on the instance.",
+            .error_union => |error_union| if (@typeInfo(error_union.payload) == expect)
+                return "Consider using `catch` or `try` on the instance.",
+            .pointer => |pointer| if (pointer.size == .one and @typeInfo(pointer.child) == expect)
+                return "Consider using `.*` on the instance.",
+            .array => |array| if (array.len == 1 and @typeInfo(array.child) == expect)
+                return "Consider using `instance[0]` instead of the instance.",
+            .int, .comptime_int => if (expect == .@"enum")
+                return "Consider wrapping it into an `enum(" ++ @typeName(@Type(actual)) ++ ")`.",
+            else => {},
+        }
+
+        return "";
+    }
 }
