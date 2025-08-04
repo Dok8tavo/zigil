@@ -4,14 +4,31 @@ const kind = @import("kind.zig");
 
 pub const Options = struct {
     child: z.Trait = .no_trait,
-    len: Length = .no_option,
-    max_len: Length = .no_option,
-    min_len: Length = .no_option,
+    length: Length = .no_option,
 
     pub const Length = union(enum) {
-        no_option,
+        eql: usize,
+        range: z.Range(.inner),
+        min_suggested: Max,
+        max_suggested: Min,
         suggested,
-        is: usize,
+
+        const Max = struct { max: ?usize = null };
+        const Min = struct { min: ?usize = null };
+
+        pub const no_option = Length{ .range = .{} };
+
+        pub fn atMost(comptime m: comptime_int) Length {
+            return .{ .range = .until(m) };
+        }
+
+        pub fn atLeast(comptime m: comptime_int) Length {
+            return .{ .range = .from(m) };
+        }
+
+        pub fn between(comptime l1: comptime_int, comptime l2: comptime_int) Length {
+            return .{ .range = .range(l1, l2) };
+        }
     };
 };
 
@@ -28,74 +45,70 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
 
         const info = @typeInfo(T).vector;
         const Child = info.child;
+
         if (r.propagateFail(Child, o.child, .{
+            .type = .fmtOne("@Vector(..., {s})", .type),
             .option = .fmtOne("child => {s}", .trait),
-            .expect = .fmtOne("The type must be a vector whose child satisfy the trait {s}.", .trait),
+            .expect = .fmtOne("The vector's child must satisfy the trait {s}.", .trait),
         })) |fail| return fail;
 
         const suggested = std.simd.suggestVectorLength(Child) orelse 1;
 
-        const eql: ?usize = switch (o.len) {
-            .suggested => suggested,
-            .no_option => null,
-            .is => |eql| eql,
-        };
+        const vector_length_name = z.fmt("@Vector({}, ...)", .{info.len});
+        const actual_length_msg = z.fmt("The vector's length is {}.", .{info.len});
 
-        const min = switch (o.min_len) {
-            .suggested => suggested,
-            .no_option => 0,
-            .is => |min| min,
-        };
-
-        const max = switch (o.max_len) {
-            .suggested => suggested,
-            .no_option => std.math.maxInt(usize),
-            .is => |max| max,
-        };
-
-        // TODO: compile error instead?
-        if (max < min) return r.failWith(.{
-            .@"error" = error.ImpossibleRequirement,
-            .option = z.fmt("max-len[{}] < min-len[{}]", .{ max, min }),
-            .expect = z.fmt("The length of the vector type must be at most {} but at least {}.", .{ max, min }),
-        });
-
-        if (eql) |eql_len| {
-            if (eql_len < min) return r.failWith(.{
-                .@"error" = error.ImpossibleRequirement,
-                .option = z.fmt("eql-len[{}] < min-len[{}]", .{ eql_len, min }),
-                .expect = z.fmt("The length of the vector type must be exactly {} but at least {}.", .{ eql_len, min }),
-            });
-
-            if (max < eql_len) return r.failWith(.{
-                .@"error" = error.ImpossibleRequirement,
-                .option = z.fmt("max-len[{}] < eql-len[{}]", .{ max, eql_len }),
-                .expect = z.fmt("The length of the vector type must be exactly {} but at most {}.", .{ eql_len, max }),
-            });
+        block: switch (o.length) {
+            .range => |range| if (range.first != null and info.len < range.first.?) return r.failWith(.{
+                .@"error" = error.VectorTooShort,
+                .type = vector_length_name,
+                .option = z.fmt("{} <= len", .{range.first.?}),
+                .expect = z.fmt("The vector's length must be at least {}.", .{range.first.?}),
+                .actual = actual_length_msg,
+            }) else if (range.last != null and range.last.? < info.len) return r.failWith(.{
+                .@"error" = error.VectorTooLong,
+                .type = vector_length_name,
+                .option = z.fmt("len <= {}", .{range.last.?}),
+                .expect = z.fmt("The vector's length must be at most {}.", .{range.last.?}),
+                .actual = actual_length_msg,
+            }),
+            .min_suggested => |min_suggested| if (info.len < suggested) return r.failWith(.{
+                .@"error" = error.VectorShorterThanSuggested,
+                .type = vector_length_name,
+                .option = "suggest <= len",
+                .expect = z.fmt(
+                    "The vector's length must be at least the length suggested by `std.simd.suggestVectorLength` ({}).",
+                    .{suggested},
+                ),
+                .actual = actual_length_msg,
+            }) else if (min_suggested.max) |max| continue :block .atMost(max),
+            .max_suggested => |max_suggested| if (suggested < info.len) return r.failWith(.{
+                .@"error" = error.VectorLongerThanSuggested,
+                .type = vector_length_name,
+                .option = "len <= suggest",
+                .expect = z.fmt(
+                    "The vector's length must be at most the length suggested by `std.simd.suggestVectorLength` ({}).",
+                    .{suggested},
+                ),
+                .actual = actual_length_msg,
+            }) else if (max_suggested.min) |min| continue :block .atLeast(min),
+            .suggested => if (suggested != info.len) return r.failWith(.{
+                .@"error" = error.VectorLengthNotSuggested,
+                .type = vector_length_name,
+                .option = "len == suggest",
+                .actual = actual_length_msg,
+                .expect = z.fmt(
+                    "The vector's length must be the length suggested by `std.simd.suggestVectorLength` ({}).",
+                    .{suggested},
+                ),
+            }),
+            .eql => |eql| if (eql != info.len) return r.failWith(.{
+                .@"error" = error.WrongVectorLength,
+                .type = vector_length_name,
+                .option = z.fmt("len == {}", .{eql}),
+                .actual = actual_length_msg,
+                .expect = z.fmt("The vector's length must be {}.", .{eql}),
+            }),
         }
-
-        const len = info.len;
-
-        if (eql) |eql_len| return if (eql_len != len) r.failWith(.{
-            .@"error" = error.WrongLength,
-            .actual = z.fmt("The vector's length is {}.", .{len}),
-            .option = z.fmt("eql-len[{}]", .{eql_len}),
-            .expect = z.fmt("The vector's length must be exactly {}.", .{eql_len}),
-        }) else r;
-
-        if (len < min) return r.failWith(.{
-            .@"error" = error.VectorTooShort,
-            .actual = z.fmt("The vector's length is {}.", .{len}),
-            .option = z.fmt("min-len[{}]", .{min}),
-            .expect = z.fmt("The vector's length must be at least {}.", .{min}),
-        });
-
-        if (max < len) return r.failWith(.{
-            .@"error" = error.VectorTooLong,
-            .actual = z.fmt("The vector's length is {}.", .{len}),
-            .option = z.fmt("max-len[{}]", .{max}),
-            .expect = z.fmt("The vector's length must be at most {}.", .{max}),
-        });
 
         return r;
     }

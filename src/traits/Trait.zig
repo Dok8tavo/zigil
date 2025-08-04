@@ -130,27 +130,30 @@ test isVector {
     try isVector(.{ .child = .is(bool) }).expectError(@Vector(1, u8), error.WrongType);
     try isVector(.{ .child = .is(bool) }).expect(@Vector(1, bool));
 
-    const len6 = isVector(.{ .len = .{ .is = 6 } });
-    try len6.expectError(@Vector(5, bool), error.WrongLength);
+    const len6 = isVector(.{ .length = .{ .eql = 6 } });
+    try len6.expectError(@Vector(5, bool), error.WrongVectorLength);
     try len6.expect(@Vector(6, i32));
 
-    const suggested_length = isVector(.{ .len = .suggested });
+    const suggested_length = isVector(.{ .length = .suggested });
     try suggested_length.expect(@Vector(std.simd.suggestVectorLength(bool) orelse 1, bool));
 
-    const min_two = isVector(.{ .min_len = .{ .is = 2 } });
+    const min_two = isVector(.{ .length = .atLeast(2) });
 
     try min_two.expect(@Vector(8, u8));
     try min_two.expect(@Vector(2, u8));
     try min_two.expectError(@Vector(1, u8), error.VectorTooShort);
 
-    const max_five = isVector(.{ .max_len = .{ .is = 5 } });
+    const max_five = isVector(.{ .length = .atMost(5) });
 
     try max_five.expect(@Vector(1, isize));
     try max_five.expect(@Vector(5, isize));
     try max_five.expectError(@Vector(6, isize), error.VectorTooLong);
 
-    const impossible = isVector(.{ .min_len = .{ .is = 10 }, .max_len = .{ .is = 5 } });
-    try impossible.expectError(@Vector(7, u8), error.ImpossibleRequirement);
+    const between_two_five = isVector(.{ .length = .between(2, 5) });
+    try between_two_five.expect(@Vector(2, u8));
+    try between_two_five.expect(@Vector(5, u8));
+    try between_two_five.expectError(@Vector(1, u8), error.VectorTooShort);
+    try between_two_five.expectError(@Vector(6, u8), error.VectorTooLong);
 }
 
 const arrays = @import("impl/arrays.zig");
