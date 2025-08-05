@@ -167,10 +167,10 @@ test isArray {
     try array_of_optionals.expect([2]?u8);
     try array_of_optionals.expectError([2]u8, error.IsInt);
 
-    const long_array = isArray(.{ .length = .from(1000) });
+    const long_array = isArray(.{ .length = .atLeast(1000) });
     try long_array.expect([1000]usize);
     try long_array.expect([10_000]i32);
-    try long_array.expectError([999]struct {}, error.TooShort);
+    try long_array.expectError([999]struct {}, error.ArrayTooShort);
 }
 
 const ints = @import("impl/ints.zig");

@@ -2,7 +2,27 @@ const z = @import("../../root.zig");
 
 pub const Options = struct {
     child: z.Trait = .no_trait,
-    length: z.Range(.inner) = .{},
+    length: Length = .{},
+
+    pub const Length = struct {
+        inner: z.Range(.inner) = .{},
+
+        pub fn eql(comptime l: comptime_int) Length {
+            return .{ .inner = .range(l, l) };
+        }
+
+        pub fn between(comptime l1: comptime_int, comptime l2: comptime_int) Length {
+            return .{ .inner = .range(l1, l2) };
+        }
+
+        pub fn atLeast(comptime l: comptime_int) Length {
+            return .{ .inner = .from(l) };
+        }
+
+        pub fn atMost(comptime l: comptime_int) Length {
+            return .{ .inner = .until(l) };
+        }
+    };
 };
 
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
@@ -13,24 +33,40 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             return fail;
 
         const info = @typeInfo(T).array;
-
         if (r.propagateFail(info.child, o.child, .{
+            .type = .fmtOne("[_]{s}", .type),
             .option = .fmtOne("child => {s}", .trait),
-            .expect = .fmtOne("The array's child type must satisfy the trait `{s}`.", .trait),
+            .expect = .fmtOne("The array's child must satisfy the trait {s}.", .trait),
         })) |fail| return fail;
 
-        if (o.length.first) |first| if (info.len < first) return r.failWith(.{
-            .@"error" = error.TooShort,
-            .option = z.fmt("len <= {}", .{first}),
-            .expect = z.fmt("The length of the array must be at least {}.", .{first}),
-            .actual = z.fmt("The length of the array is {}.", .{first}),
+        const array_length_name = z.fmt("[{}]@Child", .{info.len});
+        const actual_length_msg = z.fmt("The array's length is {}.", .{info.len});
+
+        if (o.length.inner.first != null and
+            o.length.inner.last != null and
+            o.length.inner.first.? == o.length.inner.last.? and
+            o.length.inner.first.? != info.len) return r.failWith(.{
+            .@"error" = error.WrongArrayLength,
+            .type = array_length_name,
+            .option = z.fmt("len == {}", .{o.length.inner.first.?}),
+            .actual = actual_length_msg,
+            .expect = z.fmt("The array's length must be {}.", .{o.length.inner.first.?}),
         });
 
-        if (o.length.last) |last| if (last < info.len) return r.failWith(.{
-            .@"error" = error.TooLong,
-            .option = z.fmt("{} <= len"),
-            .expect = z.fmt("The length of the array must be at most {}.", .{last}),
-            .actual = z.fmt("The length of the array is {}.", .{last}),
+        if (o.length.inner.first) |at_least| if (info.len < at_least) return r.failWith(.{
+            .@"error" = error.ArrayTooShort,
+            .option = z.fmt("{} <= len", .{at_least}),
+            .type = array_length_name,
+            .actual = actual_length_msg,
+            .expect = z.fmt("The array's length must be at least {}.", .{at_least}),
+        });
+
+        if (o.length.inner.last) |at_most| if (at_most < info.len) return r.failWith(.{
+            .@"error" = error.ArrayTooLong,
+            .option = z.fmt("len <= {}", .{at_most}),
+            .type = array_length_name,
+            .actual = actual_length_msg,
+            .expect = z.fmt("The array's length must be at most {}.", .{at_most}),
         });
 
         return r;
