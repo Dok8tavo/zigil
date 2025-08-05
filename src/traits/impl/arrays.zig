@@ -3,6 +3,7 @@ const z = @import("../../root.zig");
 pub const Options = struct {
     child: z.Trait = .no_trait,
     length: Length = .{},
+    sentinel: ?bool = null,
 
     pub const Length = struct {
         inner: z.Range(.inner) = .{},
@@ -39,7 +40,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             .expect = .fmtOne("The array's child must satisfy the trait `{s}`.", .trait),
         })) |fail| return fail;
 
-        const array_length_name = z.fmt("[{}]@Child", .{info.len});
+        const array_length_name = z.fmt("[{}{s}]@Child", .{ info.len, if (info.sentinel()) |_| ":_" else "" });
         const actual_length_msg = z.fmt("The array's length is {}.", .{info.len});
 
         if (o.length.inner.first != null and
@@ -68,6 +69,23 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             .actual = actual_length_msg,
             .expect = z.fmt("The array's length must be at most {}.", .{at_most}),
         });
+
+        if (o.sentinel) |sentinel| switch (sentinel) {
+            true => if (info.sentinel_ptr == null) return r.failWith(.{
+                .@"error" = error.ArrayWoutSentinel,
+                .type = "[_]@Child",
+                .option = "with-sentinel",
+                .actual = "The array doesn't have a sentinel.",
+                .expect = "The array must have a sentinel.",
+            }),
+            false => if (info.sentinel_ptr != null) return r.failWith(.{
+                .@"error" = error.ArrayWithSentinel,
+                .type = "[_:_]@Child",
+                .option = "wout-sentinel",
+                .actual = "The array have a sentinel.",
+                .expect = "The array mustn't have a sentinel.",
+            }),
+        };
 
         return r;
     }

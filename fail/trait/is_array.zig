@@ -10,3 +10,7 @@ pub const length = struct {
     pub const at_least = if (!root.is_listing) isArray(.{ .length = .atLeast(8) }).assert([2]u8);
     pub const at_most = if (!root.is_listing) isArray(.{ .length = .atMost(4) }).assert([6]u8);
 };
+pub const sentinel = struct {
+    pub const with = if (!root.is_listing) isArray(.{ .sentinel = true }).assert([2]u8);
+    pub const wout = if (!root.is_listing) isArray(.{ .sentinel = false }).assert([2:0]u8);
+};
