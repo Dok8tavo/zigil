@@ -49,7 +49,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
         if (r.propagateFail(Child, o.child, .{
             .type = .fmtOne("@Vector(..., {s})", .type),
             .option = .fmtOne("child => {s}", .trait),
-            .expect = .fmtOne("The vector's child must satisfy the trait {s}.", .trait),
+            .expect = .fmtOne("The vector's child must satisfy the trait `{s}`.", .trait),
         })) |fail| return fail;
 
         const suggest = std.simd.suggestVectorLength(Child) orelse 1;

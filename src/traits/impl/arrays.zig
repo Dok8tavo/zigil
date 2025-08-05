@@ -36,7 +36,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
         if (r.propagateFail(info.child, o.child, .{
             .type = .fmtOne("[_]{s}", .type),
             .option = .fmtOne("child => {s}", .trait),
-            .expect = .fmtOne("The array's child must satisfy the trait {s}.", .trait),
+            .expect = .fmtOne("The array's child must satisfy the trait `{s}`.", .trait),
         })) |fail| return fail;
 
         const array_length_name = z.fmt("[{}]@Child", .{info.len});

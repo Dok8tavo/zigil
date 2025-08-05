@@ -9,7 +9,7 @@ pub fn is(comptime T: type, comptime child: z.Trait) z.Trait.Result {
         const info = @typeInfo(T).optional;
         return r.propagateFail(info.child, child, .{
             .option = .fmtOne("child => {s}", .trait),
-            .expect = .fmtOne("The type must be an optional whose child must satisfy the trait {s}.", .trait),
+            .expect = .fmtOne("The type must be an optional whose child must satisfy the trait `{s}`.", .trait),
         }) orelse r;
     }
 }
