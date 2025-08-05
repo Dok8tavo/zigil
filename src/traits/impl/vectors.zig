@@ -9,12 +9,12 @@ pub const Options = struct {
     pub const Length = union(enum) {
         eql: usize,
         range: z.Range(.inner),
-        min_suggested: Max,
-        max_suggested: Min,
-        suggested,
+        at_least_suggest: AtLeastSuggest,
+        at_most_suggest: AtMostSuggest,
+        suggest,
 
-        const Max = struct { max: ?usize = null };
-        const Min = struct { min: ?usize = null };
+        const AtLeastSuggest = struct { at_most: ?usize = null };
+        const AtMostSuggest = struct { at_least: ?usize = null };
 
         pub const no_option = Length{ .range = .{} };
 
@@ -52,7 +52,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             .expect = .fmtOne("The vector's child must satisfy the trait {s}.", .trait),
         })) |fail| return fail;
 
-        const suggested = std.simd.suggestVectorLength(Child) orelse 1;
+        const suggest = std.simd.suggestVectorLength(Child) orelse 1;
 
         const vector_length_name = z.fmt("@Vector({}, ...)", .{info.len});
         const actual_length_msg = z.fmt("The vector's length is {}.", .{info.len});
@@ -71,34 +71,34 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
                 .expect = z.fmt("The vector's length must be at most {}.", .{range.last.?}),
                 .actual = actual_length_msg,
             }),
-            .min_suggested => |min_suggested| if (info.len < suggested) return r.failWith(.{
-                .@"error" = error.VectorShorterThanSuggested,
+            .at_least_suggest => |at_least_suggest| if (info.len < suggest) return r.failWith(.{
+                .@"error" = error.VectorShorterThanSuggest,
                 .type = vector_length_name,
                 .option = "suggest <= len",
                 .expect = z.fmt(
                     "The vector's length must be at least the length suggested by `std.simd.suggestVectorLength` ({}).",
-                    .{suggested},
+                    .{suggest},
                 ),
                 .actual = actual_length_msg,
-            }) else if (min_suggested.max) |max| continue :block .atMost(max),
-            .max_suggested => |max_suggested| if (suggested < info.len) return r.failWith(.{
-                .@"error" = error.VectorLongerThanSuggested,
+            }) else if (at_least_suggest.max) |max| continue :block .atMost(max),
+            .at_most_suggest => |at_most_suggest| if (suggest < info.len) return r.failWith(.{
+                .@"error" = error.VectorLongerThanSuggest,
                 .type = vector_length_name,
                 .option = "len <= suggest",
                 .expect = z.fmt(
                     "The vector's length must be at most the length suggested by `std.simd.suggestVectorLength` ({}).",
-                    .{suggested},
+                    .{suggest},
                 ),
                 .actual = actual_length_msg,
-            }) else if (max_suggested.min) |min| continue :block .atLeast(min),
-            .suggested => if (suggested != info.len) return r.failWith(.{
-                .@"error" = error.VectorLengthNotSuggested,
+            }) else if (at_most_suggest.at_least) |min| continue :block .atLeast(min),
+            .suggest => if (suggest != info.len) return r.failWith(.{
+                .@"error" = error.VectorLengthNotSuggest,
                 .type = vector_length_name,
                 .option = "len == suggest",
                 .actual = actual_length_msg,
                 .expect = z.fmt(
                     "The vector's length must be the length suggested by `std.simd.suggestVectorLength` ({}).",
-                    .{suggested},
+                    .{suggest},
                 ),
             }),
             .eql => |eql| if (eql != info.len) return r.failWith(.{

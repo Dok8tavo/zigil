@@ -134,7 +134,7 @@ test isVector {
     try len6.expectError(@Vector(5, bool), error.WrongVectorLength);
     try len6.expect(@Vector(6, i32));
 
-    const suggested_length = isVector(.{ .length = .suggested });
+    const suggested_length = isVector(.{ .length = .suggest });
     try suggested_length.expect(@Vector(std.simd.suggestVectorLength(bool) orelse 1, bool));
 
     const min_two = isVector(.{ .length = .atLeast(2) });
