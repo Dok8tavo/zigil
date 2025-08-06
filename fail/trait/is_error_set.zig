@@ -3,6 +3,8 @@ const z = @import("zigil");
 
 const isErrorSet = z.Trait.isErrorSet;
 
+pub const kind = if (!root.is_listing) isErrorSet(.{}).assert(struct { u8 });
+
 pub const with = if (!root.is_listing)
     isErrorSet(.{ .with = .lit(.ImALoneSomeCowboy) }).assert(error{});
 pub const wout = if (!root.is_listing)
