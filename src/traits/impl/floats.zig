@@ -7,7 +7,7 @@ pub const Options = struct {
     pub const Distinguish = struct {
         pairs: []const [2]comptime_float = &.{},
 
-        pub fn between(comptime a: comptime_float, comptime b: comptime_float) Distinguish {
+        pub fn pair(comptime a: comptime_float, comptime b: comptime_float) Distinguish {
             comptime return .{ .pairs = &.{.{ a, b }} };
         }
 

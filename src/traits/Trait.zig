@@ -226,8 +226,8 @@ pub fn isFloat(comptime o: floats.Options) Trait {
 test isFloat {
     try isFloat(.{}).expect(f16);
 
-    try isFloat(.{ .distinguish = .between(10_000, 10_001) }).expectError(f16, error.NotEnoughPrecision);
-    try isFloat(.{ .distinguish = .between(10_000, 10_001) }).expect(f32);
+    try isFloat(.{ .distinguish = .pair(10_000, 10_001) }).expectError(f16, error.NotEnoughPrecision);
+    try isFloat(.{ .distinguish = .pair(10_000, 10_001) }).expect(f32);
 
     try isFloat(.{ .distinguish = .all(&.{ 10, 10.1, 10.11 }) })
         .expect(f16);
