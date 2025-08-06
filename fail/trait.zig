@@ -1,5 +1,6 @@
 pub const is = @import("trait/is.zig");
 pub const isArray = @import("trait/is_array.zig");
+pub const isEnum = @import("trait/is_enum.zig");
 pub const isErrorSet = @import("trait/is_error_set.zig");
 pub const isErrorUnion = @import("trait/is_error_union.zig");
 pub const isFloat = @import("trait/is_float.zig");
