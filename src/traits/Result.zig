@@ -136,7 +136,7 @@ pub const Failure = struct {
     repair: []const u8 = "",
 
     pub fn format(f: Failure, w: *std.Io.Writer) WriteError!void {
-        try w.print("[trait error ({[error]t})] {[actual]s}\n\t{[repair]s}", f);
+        try w.print("[trait error ({[error]t})] {[actual]s}\n    {[repair]s}", f);
     }
 };
 
@@ -163,7 +163,7 @@ pub const Info = struct {
     type: []const u8,
 
     pub fn format(i: Info, w: *std.Io.Writer) WriteError!void {
-        try w.print("[trait info] `{[type]s}` => `{[trait]s}`.\n\t{[expect]s}", i);
+        try w.print("[trait info] `{[type]s}` => `{[trait]s}`.\n    {[expect]s}", i);
     }
 
     fn from(expect: ?[]const u8, option: ?[]const u8, @"type": ?[]const u8, r: Result) Info {
