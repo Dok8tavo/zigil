@@ -48,9 +48,15 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
 
         const info = @typeInfo(T).error_set;
 
+        const type_name = if (info) |set| switch (set.len) {
+            0 => "error{}",
+            1 => "error{" ++ set[0].name ++ "}",
+            else => "error{ ... }",
+        } else "anyerror";
+
         if (o.is_any) |is_any| if ((info == null) != is_any) return r.failWith(.{
             .@"error" = if (is_any) error.IsNotAnyerror else error.IsAnyerror,
-            .actual = z.fmt("The error set is `{s}`.", .{@typeName(T)}),
+            .actual = z.fmt("The error set is `{s}`.", .{type_name}),
             .option = if (is_any) "is-any" else "is-not-any",
             .expect = z.fmt(
                 "The error set {s} be `anyerror`.",
@@ -60,12 +66,14 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
 
         for (o.with.names) |name| if (!has(info, name)) return r.failWith(.{
             .@"error" = error.MissingError,
+            .type = type_name,
             .expect = z.fmt("The error set must contain `error.{s}`.", .{name}),
             .option = z.fmt("with-{s}", .{name}),
         });
 
         for (o.wout.names) |name| if (has(info, name)) return r.failWith(.{
             .@"error" = error.ForbiddenError,
+            .type = type_name,
             .expect = z.fmt("The error set can't contain `error.{s}`.", .{name}),
             .option = z.fmt("wout-{s}", .{name}),
         });
