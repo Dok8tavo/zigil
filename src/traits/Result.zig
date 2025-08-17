@@ -3,17 +3,20 @@ trace: Trace = .{},
 info: Info,
 
 const std = @import("std");
+const type_name = @import("type_name.zig");
 const z = @import("../root.zig");
 
 const Result = @This();
 const WriteError = std.Io.Writer.Error;
 
 pub fn init(comptime T: type, generic_trait_name: []const u8, generic_expectation: []const u8) Result {
-    return Result{ .info = Info{
-        .type = @typeName(T),
-        .expect = generic_expectation,
-        .trait = generic_trait_name,
-    } };
+    return Result{
+        .info = Info{
+            .type = type_name.of(T, .max),
+            .expect = generic_expectation,
+            .trait = generic_trait_name,
+        },
+    };
 }
 
 pub fn isPassing(r: Result) bool {

@@ -78,17 +78,33 @@ const Pairs = struct {
     }
 };
 
-fn isMatcher(comptime T: type) bool {
-    comptime return z.Trait.isStruct(.{
-        .field_count = .exact_items,
-        .fields = .many(&.{
-            .{ .name = "id", .trait = .is(?Id), .has_default = true },
-            .{ .name = "trait", .trait = .is(z.Trait), .has_default = true },
-        }),
-    }).check(T) and T == Any(
-        (T{}).id,
-        (T{}).trait,
-    );
+pub fn isMatcher(comptime T: type) bool {
+    comptime {
+        const info = switch (@typeInfo(T)) {
+            .@"struct" => |struct_info| struct_info,
+            else => return false,
+        };
+
+        if (info.is_tuple) return false;
+
+        const id = for (info.fields) |field| {
+            if (z.eql(u8, field.name, "id")) {
+                if (field.type != ?Id)
+                    return false;
+                break field.defaultValue() orelse return false;
+            }
+        } else return false;
+
+        const trait = for (info.fields) |field| {
+            if (z.eql(u8, field.name, "trait")) {
+                if (field.type != z.Trait)
+                    return false;
+                break field.defaultValue() orelse return false;
+            }
+        } else return false;
+
+        return Any(id, trait) == T;
+    }
 }
 
 pub fn uMatchT(comptime U: type, comptime T: type) z.Trait.Result {
