@@ -35,12 +35,10 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
 
         const info = @typeInfo(T).array;
         if (r.propagateFail(info.child, o.child, .{
-            .type = .fmtOne("[_]{s}", .type),
             .option = .fmtOne("child => {s}", .trait),
             .expect = .fmtOne("The array's child must satisfy the trait `{s}`.", .trait),
         })) |fail| return fail;
 
-        const array_length_name = z.fmt("[{}{s}]@Child", .{ info.len, if (info.sentinel()) |_| ":_" else "" });
         const actual_length_msg = z.fmt("The array's length is {}.", .{info.len});
 
         if (o.length.inner.first != null and
@@ -48,7 +46,6 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             o.length.inner.first.? == o.length.inner.last.? and
             o.length.inner.first.? != info.len) return r.failWith(.{
             .@"error" = error.WrongArrayLength,
-            .type = array_length_name,
             .option = z.fmt("len == {}", .{o.length.inner.first.?}),
             .actual = actual_length_msg,
             .expect = z.fmt("The array's length must be {}.", .{o.length.inner.first.?}),
@@ -57,7 +54,6 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
         if (o.length.inner.first) |at_least| if (info.len < at_least) return r.failWith(.{
             .@"error" = error.ArrayTooShort,
             .option = z.fmt("{} <= len", .{at_least}),
-            .type = array_length_name,
             .actual = actual_length_msg,
             .expect = z.fmt("The array's length must be at least {}.", .{at_least}),
         });
@@ -65,7 +61,6 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
         if (o.length.inner.last) |at_most| if (at_most < info.len) return r.failWith(.{
             .@"error" = error.ArrayTooLong,
             .option = z.fmt("len <= {}", .{at_most}),
-            .type = array_length_name,
             .actual = actual_length_msg,
             .expect = z.fmt("The array's length must be at most {}.", .{at_most}),
         });
@@ -73,14 +68,12 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
         if (o.sentinel) |sentinel| switch (sentinel) {
             true => if (info.sentinel_ptr == null) return r.failWith(.{
                 .@"error" = error.ArrayWoutSentinel,
-                .type = "[_]@Child",
                 .option = "with-sentinel",
                 .actual = "The array doesn't have a sentinel.",
                 .expect = "The array must have a sentinel.",
             }),
             false => if (info.sentinel_ptr != null) return r.failWith(.{
                 .@"error" = error.ArrayWithSentinel,
-                .type = "[_:_]@Child",
                 .option = "wout-sentinel",
                 .actual = "The array have a sentinel.",
                 .expect = "The array mustn't have a sentinel.",

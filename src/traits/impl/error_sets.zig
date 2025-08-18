@@ -66,14 +66,12 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
 
         for (o.with.names) |name| if (!has(info, name)) return r.failWith(.{
             .@"error" = error.MissingError,
-            .type = type_name,
             .expect = z.fmt("The error set must contain `error.{s}`.", .{name}),
             .option = z.fmt("with-{s}", .{name}),
         });
 
         for (o.wout.names) |name| if (has(info, name)) return r.failWith(.{
             .@"error" = error.ForbiddenError,
-            .type = type_name,
             .expect = z.fmt("The error set can't contain `error.{s}`.", .{name}),
             .option = z.fmt("wout-{s}", .{name}),
         });

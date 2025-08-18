@@ -47,33 +47,28 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
         const Child = info.child;
 
         if (r.propagateFail(Child, o.child, .{
-            .type = .fmtOne("@Vector(..., {s})", .type),
             .option = .fmtOne("child => {s}", .trait),
             .expect = .fmtOne("The vector's child must satisfy the trait `{s}`.", .trait),
         })) |fail| return fail;
 
         const suggest = std.simd.suggestVectorLength(Child) orelse 1;
 
-        const vector_length_name = z.fmt("@Vector({}, ...)", .{info.len});
         const actual_length_msg = z.fmt("The vector's length is {}.", .{info.len});
 
         block: switch (o.length) {
             .range => |range| if (range.first != null and info.len < range.first.?) return r.failWith(.{
                 .@"error" = error.VectorTooShort,
-                .type = vector_length_name,
                 .option = z.fmt("{} <= len", .{range.first.?}),
                 .expect = z.fmt("The vector's length must be at least {}.", .{range.first.?}),
                 .actual = actual_length_msg,
             }) else if (range.last != null and range.last.? < info.len) return r.failWith(.{
                 .@"error" = error.VectorTooLong,
-                .type = vector_length_name,
                 .option = z.fmt("len <= {}", .{range.last.?}),
                 .expect = z.fmt("The vector's length must be at most {}.", .{range.last.?}),
                 .actual = actual_length_msg,
             }),
             .at_least_suggest => |at_least_suggest| if (info.len < suggest) return r.failWith(.{
                 .@"error" = error.VectorShorterThanSuggest,
-                .type = vector_length_name,
                 .option = "suggest <= len",
                 .expect = z.fmt(
                     "The vector's length must be at least the length suggested by `std.simd.suggestVectorLength` ({}).",
@@ -83,7 +78,6 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             }) else if (at_least_suggest.max) |max| continue :block .atMost(max),
             .at_most_suggest => |at_most_suggest| if (suggest < info.len) return r.failWith(.{
                 .@"error" = error.VectorLongerThanSuggest,
-                .type = vector_length_name,
                 .option = "len <= suggest",
                 .expect = z.fmt(
                     "The vector's length must be at most the length suggested by `std.simd.suggestVectorLength` ({}).",
@@ -93,7 +87,6 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             }) else if (at_most_suggest.at_least) |min| continue :block .atLeast(min),
             .suggest => if (suggest != info.len) return r.failWith(.{
                 .@"error" = error.VectorLengthNotSuggest,
-                .type = vector_length_name,
                 .option = "len == suggest",
                 .actual = actual_length_msg,
                 .expect = z.fmt(
@@ -103,7 +96,6 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             }),
             .eql => |eql| if (eql != info.len) return r.failWith(.{
                 .@"error" = error.WrongVectorLength,
-                .type = vector_length_name,
                 .option = z.fmt("len == {}", .{eql}),
                 .actual = actual_length_msg,
                 .expect = z.fmt("The vector's length must be {}.", .{eql}),

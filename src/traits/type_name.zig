@@ -46,10 +46,6 @@ pub inline fn of(comptime T: type, comptime o: Options) []const u8 {
         };
     }
 }
-test of {
-    //const eql = std.testing.expectEqualStrings;
-    //try eql("std.ArrayList(u8)", of(std.ArrayList(u8), .max));
-}
 
 fn ofMatcher(comptime T: type) []const u8 {
     comptime {
@@ -74,9 +70,9 @@ fn ofUserDefined(comptime T: type) []const u8 {
 
         path: switch (old[upper_index]) {
             'a'...'z', 'A'...'Z', '_' => {
-                const not_identifier = for (old[upper_index..], upper_index..) |byte, i| switch (byte) {
-                    'a'...'z', 'A'...'Z', '0'...'9', '_' => {},
-                    else => break i,
+                const not_identifier = loop: for (old[upper_index..], upper_index..) |byte, i| switch (byte) {
+                    'a'...'z', 'A'...'Z', '0'...'9', '_', '.' => {},
+                    else => break :loop i,
                 } else {
                     new = new ++ old[lower_index..];
                     break :path;
@@ -95,6 +91,7 @@ fn ofUserDefined(comptime T: type) []const u8 {
                 // it starts with a parenthese
                 if (upper_index == 0) return old;
 
+                upper_index += 1;
                 new = new ++ old[lower_index..upper_index];
 
                 var encountered_braces: usize = 1;
@@ -122,7 +119,7 @@ fn ofUserDefined(comptime T: type) []const u8 {
 
                 upper_index = iter.i;
                 lower_index = iter.i;
-                new = new ++ "(...)";
+                new = new ++ "...)";
             },
             // there's a weird character
             else => return old,

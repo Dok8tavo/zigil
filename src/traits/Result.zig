@@ -30,7 +30,7 @@ pub fn isFailing(r: Result) bool {
 pub fn failWith(comptime r: Result, comptime fw: FailWith) Result {
     comptime {
         r.compileErrorOn(.fail);
-        const info = Info.from(fw.expect, fw.option, fw.type, r);
+        const info = Info.from(fw.expect, fw.option, r);
         return Result{
             .trace = r.trace.with(info),
             .info = info,
@@ -48,7 +48,6 @@ pub const FailWith = struct {
     repair: []const u8 = "",
     expect: ?[]const u8 = null,
     option: ?[]const u8 = null,
-    type: ?[]const u8 = null,
 };
 
 pub fn propagateFailResult(comptime r1: Result, comptime r2: Result, comptime pri: PropagateResultInfo) ?Result {
@@ -57,7 +56,6 @@ pub fn propagateFailResult(comptime r1: Result, comptime r2: Result, comptime pr
         const info = Info.from(
             pri.expect,
             pri.option,
-            pri.type,
             r1,
         );
         return if (r2.failure) |f| Result{
@@ -70,7 +68,6 @@ pub fn propagateFailResult(comptime r1: Result, comptime r2: Result, comptime pr
 pub const PropagateResultInfo = struct {
     expect: ?[]const u8 = null,
     option: ?[]const u8 = null,
-    type: ?[]const u8 = null,
 };
 pub fn propagateFail(
     comptime r: Result,
@@ -84,14 +81,12 @@ pub fn propagateFail(
         return r.propagateFailResult(r2, .{
             .expect = if (pi.expect) |expect| expect.resolve(r2) else null,
             .option = if (pi.option) |option| option.resolve(r2) else null,
-            .type = if (pi.type) |@"type"| @"type".resolve(r2) else null,
         });
     }
 }
 pub const PropagateInfo = struct {
     expect: ?Resolvable = null,
     option: ?Resolvable = null,
-    type: ?Resolvable = null,
 
     pub const Resolvable = struct {
         string: []const u8,
@@ -99,8 +94,8 @@ pub const PropagateInfo = struct {
 
         const Resolve = enum {
             expect,
-            trait,
             type,
+            trait,
         };
 
         pub fn resolve(comptime resolvable: Resolvable, comptime result: Result) []const u8 {
@@ -169,11 +164,11 @@ pub const Info = struct {
         try w.print("[trait info] `{[type]s}` => `{[trait]s}`.\n    {[expect]s}", i);
     }
 
-    fn from(expect: ?[]const u8, option: ?[]const u8, @"type": ?[]const u8, r: Result) Info {
+    fn from(expect: ?[]const u8, option: ?[]const u8, r: Result) Info {
         return Info{
             .expect = expect orelse r.info.expect,
             .trait = r.info.trait ++ if (option) |o| "[" ++ o ++ "]" else "",
-            .type = @"type" orelse r.info.type,
+            .type = r.info.type,
         };
     }
 };
