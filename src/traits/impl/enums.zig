@@ -1,25 +1,11 @@
-const containers = @import("containers.zig");
-const kind = @import("kind.zig");
-const ints = @import("ints.zig");
 const z = @import("../../root.zig");
 
 pub const Options = struct {
-    with: Values = .{},
-    wout: Values = .{},
+    fields: Fields = .no_requirement,
     is_exhaustive: ?bool = null,
     tag: z.Trait = .no_trait,
 
-    pub const Values = struct {
-        strings: []const []const u8 = &.{},
-
-        pub fn names(comptime n: []const []const u8) Values {
-            return .{ .strings = n };
-        }
-
-        pub fn name(comptime n: []const u8) Values {
-            return .{ .strings = &.{n} };
-        }
-    };
+    pub const Fields = @import("fields.zig").Fields(.@"enum");
 };
 
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
@@ -42,19 +28,8 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             .expect = .fmtOne("The tag of the enum must respect the trait `{s}`.", .trait),
         })) |fail| return fail;
 
-        for (o.with.strings) |name| if (!@hasField(T, name)) return r.failWith(.{
-            .@"error" = error.MissingValue,
-            .expect = z.fmt("The enum type must have a value named \"{s}\".", .{name}),
-            .option = z.fmt("has[{s}]", .{name}),
-        });
-
-        for (o.wout.strings) |name| for (info.fields) |field| {
-            if (z.eql(u8, name, field.name)) return r.failWith(.{
-                .@"error" = error.ForbiddenValue,
-                .expect = z.fmt("The enum type can't have a value named \"{s}\".", .{name}),
-                .option = z.fmt("has-no[{s}]", .{name}),
-            });
-        };
+        if (o.fields.propagateFail(info, r)) |fail|
+            return fail;
 
         return r;
     }

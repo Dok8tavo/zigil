@@ -7,7 +7,7 @@ pub const Options = struct {
     layout: AllowLayout = .any,
     fields: Fields = .no_requirement,
 
-    pub const Fields = @import("Fields.zig");
+    pub const Fields = @import("fields.zig").Fields(.@"union");
 
     pub const AllowLayout = union(enum) {
         all: z.Trait,
@@ -107,7 +107,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             }),
         }
 
-        if (o.fields.propagateFail(.@"union", info, r)) |fail|
+        if (o.fields.propagateFail(info, r)) |fail|
             return fail;
 
         return r;

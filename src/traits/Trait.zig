@@ -296,13 +296,14 @@ test isEnum {
     try non_exhaustive.expectError(enum {}, error.IsExhaustive);
     try non_exhaustive.expect(enum(u8) { _ });
 
-    const has_lol = isEnum(.{ .with = .name("lol") });
+    const has_lol = isEnum(.{ .fields = .one("lol", .{}) });
     try has_lol.expect(enum { lol });
-    try has_lol.expectError(enum {}, error.MissingValue);
+    try has_lol.expectError(enum {}, error.MissingField);
 
-    const has_no_lol = isEnum(.{ .wout = .name("lol") });
-    try has_no_lol.expectError(enum { lol }, error.ForbiddenValue);
-    try has_no_lol.expect(enum {});
+    const has_lol_1 = isEnum(.{ .fields = .one("lol", .{ .value = 69 }) });
+    try has_lol_1.expectError(enum {}, error.MissingField);
+    try has_lol_1.expectError(enum { lol }, error.WrongValue);
+    try has_lol_1.expect(enum(u8) { lol = 69 });
 }
 
 const structs = @import("impl/structs.zig");
@@ -327,15 +328,10 @@ test isStruct {
     try is_signed.expectError(packed struct(u0) {}, error.IsUnsignedInt);
     try is_signed.expect(packed struct(i0) {});
 
-    const has_hello = isStruct(.{ .fields = .atLeast(.{ .hello = .{} }) });
+    const has_hello = isStruct(.{ .fields = .one("hello", .{}) });
     try has_hello.expect(struct { hello: u8 });
     try has_hello.expect(struct { hello: void, goodbye: void });
     try has_hello.expectError(struct {}, error.MissingField);
-
-    const has_pointer = isStruct(.{ .fields = .exactly(.{ .pointer = .{ .trait = z.Trait.isPointer(.{}) } }) });
-    try has_pointer.expect(struct { pointer: *u8 });
-    try has_pointer.expectError(struct { pointer: u8 }, error.IsInt);
-    try has_pointer.expectError(struct { pointer: *anyopaque, pointer2: *const anyopaque }, error.ExtraFields);
 }
 
 const tuples = @import("impl/tuples.zig");
@@ -403,7 +399,7 @@ test isUnion {
     try has_variant_with.expectError(union { hello: i8 }, error.WrongType);
 
     const has_variants = isUnion(.{
-        .fields = .atLeast(.{
+        .fields = .from(.{
             .hello = .{},
             .goodbye = .{},
         }),
