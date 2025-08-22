@@ -39,57 +39,57 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             .actual = z.fmt("The address space is `{s}`.", .{@tagName(info.address_space)}),
         });
 
-        if (o.is_allowzero) |is_allowzero| if (is_allowzero != info.is_allowzero) return r.failWith(.{
-            .@"error" = if (is_allowzero) error.PointerForbidZero else error.PointerAllowZero,
-            .option = if (is_allowzero) "allow-zero" else "forbid-zero",
-            .expect = z.fmt(
-                "The pointer {s} allow zero as a valid pointer.",
-                .{if (is_allowzero) "must" else "can't"},
-            ),
-            .actual = z.fmt(
-                "The pointer {s} zero as a valid pointer.",
-                .{if (is_allowzero) "forbids" else "allows"},
-            ),
-        });
+        if (o.is_allowzero) |is_allowzero| switch (is_allowzero) {
+            true => if (!info.is_allowzero) return r.failWith(.{
+                .@"error" = error.PointerForbidZero,
+                .option = "allow-zero",
+                .expect = "The pointer must allow zero as a valid pointer.",
+            }),
+            false => if (info.is_allowzero) return r.failWith(.{
+                .@"error" = error.PointerAllowZero,
+                .option = "forbid-zero",
+                .expect = "The pointer must forbid zero as a valid pointer.",
+            }),
+        };
 
-        if (o.is_const) |is_const| if (is_const != info.is_const) return r.failWith(.{
-            .@"error" = if (is_const) error.PointerToVar else error.PointerToConst,
-            .option = if (is_const) "const" else "var",
-            .expect = z.fmt(
-                "The pointer {s} allow mutation of the value it points to.",
-                .{if (is_const) "can't" else "must"},
-            ),
-            .actual = z.fmt(
-                "The pointer {s} mutation of the value it points to.",
-                .{if (is_const) "allows" else "forbids"},
-            ),
-        });
+        if (o.is_const) |is_const| switch (is_const) {
+            true => if (!info.is_const) return r.failWith(.{
+                .@"error" = error.PointerToVar,
+                .option = "var",
+                .expect = "The pointer must allow mutation of the value it points to.",
+            }),
+            false => if (info.is_const) return r.failWith(.{
+                .@"error" = error.PointerToConst,
+                .option = "const",
+                .expect = "The pointer must forbid mutation of the value it points to.",
+            }),
+        };
 
-        if (o.is_volatile) |is_volatile| if (is_volatile != info.is_volatile) return r.failWith(.{
-            .@"error" = if (is_volatile) error.PointerIsNotVolatile else error.PointerIsVolatile,
-            .option = if (is_volatile) "volatile" else "not-volatile",
-            .expect = z.fmt(
-                "The pointer {s} be volatile.",
-                .{if (is_volatile) "must" else "can't"},
-            ),
-            .actual = z.fmt(
-                "The pointer {s} volatile.",
-                .{if (is_volatile) "isn't" else "is"},
-            ),
-        });
+        if (o.is_volatile) |is_volatile| switch (is_volatile) {
+            true => if (!info.is_volatile) return r.failWith(.{
+                .@"error" = error.PointerIsNotVolatile,
+                .option = "volatile",
+                .expect = "The pointer must be volatile.",
+            }),
+            false => if (info.is_volatile) return r.failWith(.{
+                .@"error" = error.PointerIsVolatile,
+                .option = "non-volatile",
+                .expect = "The pointer must not be volatile.",
+            }),
+        };
 
-        if (o.has_sentinel) |has_sentinel| if (has_sentinel != (info.sentinel_ptr != null)) return r.failWith(.{
-            .@"error" = if (has_sentinel) error.PointerLacksSentinel else error.PointerHasSentinel,
-            .option = if (has_sentinel) "with-sentinel" else "wout-sentinel",
-            .expect = z.fmt(
-                "The pointer {s} have a sentinel.",
-                .{if (has_sentinel) "must" else "can't"},
-            ),
-            .actual = z.fmt(
-                "The pointer {s} a sentinel.",
-                .{if (has_sentinel) "doesn't have" else "has"},
-            ),
-        });
+        if (o.has_sentinel) |has_sentinel| switch (has_sentinel) {
+            true => if (info.sentinel_ptr == null) return r.failWith(.{
+                .@"error" = error.PointerLacksSentinel,
+                .option = "with-sentinel",
+                .expect = "The pointer must have a sentinel.",
+            }),
+            false => if (info.sentinel_ptr != null) return r.failWith(.{
+                .@"error" = error.PointerHasSentinel,
+                .option = "wout-sentinel",
+                .expect = "The pointer must not have a sentinel.",
+            }),
+        };
 
         if (r.propagateFail(info.child, o.child, .{
             .option = .fmtOne(".* => {s}", .trait),
@@ -98,7 +98,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
 
         if (o.alignment) |expect_align| {
             if (r.propagateFailResult(expect_align.result(info.child, info.alignment), .{
-                .option = z.fmt("alignment[{s}]", .{expect_align.optionName()}),
+                .option = z.fmt("{s}", .{expect_align.optionName()}),
                 .expect = "The pointer alignment must satisfy the given condition.",
             })) |fail| return fail;
         }
