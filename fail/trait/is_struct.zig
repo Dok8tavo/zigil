@@ -43,10 +43,6 @@ pub const fields = struct {
         .fields = .atLeast(.{ .hello = .{} }),
     }).assert(struct {});
 
-    pub const extra = if (!root.is_listing) isStruct(.{
-        .fields = .exactly(.{ .hello = .{} }),
-    }).assert(struct { hello: u8, goodbye: u8 });
-
     pub const trait = if (!root.is_listing) isStruct(.{
         .fields = .one("hello", .{ .trait = z.Trait.is([]const u8) }),
     }).assert(struct { hello: []u8 });

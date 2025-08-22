@@ -73,10 +73,10 @@ pub fn Fields(comptime kind: enum { @"struct", @"union", @"enum" }) type {
                     if (expect_field.value) |expect_value| if (expect_value != actual_field.value) return r.failWith(.{
                         .@"error" = error.WrongValue,
                         .option = "." ++ expect_field.name ++ z.fmt(" == {}", .{expect_value}),
-                        .expect = "The field " ++ expect_field.name ++
-                            z.fmt(" must have the value {}.", .{expect_value}),
-                        .actual = "The field " ++ expect_field.name ++
-                            z.fmt("has the value {}.", .{actual_field.value}),
+                        .expect = "The field \"" ++ expect_field.name ++
+                            z.fmt("\" must have the value {}.", .{expect_value}),
+                        .actual = "The field \"" ++ expect_field.name ++
+                            z.fmt("\" has the value {}.", .{actual_field.value}),
                     });
                 } else {
                     if (r.propagateFail(actual_field.type, expect_field.trait, .{
