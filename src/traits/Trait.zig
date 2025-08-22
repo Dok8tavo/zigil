@@ -418,21 +418,16 @@ test isFunction {
 
     const generic = isFunction(.{ .is_generic = true });
     try generic.expect(@TypeOf(z.eql));
-    try generic.expectError(fn () void, error.IsNotGeneric);
+    try generic.expectError(fn () void, error.IsNonGeneric);
 
     const c = isFunction(.{ .calling_convention = .c });
     try c.expectError(fn () void, error.WrongCallingConvention);
     try c.expect(fn () callconv(.c) void);
 
-    const has_one_param = isFunction(.{ .param_count = .{ .exact = 1 } });
-    try has_one_param.expectError(fn () void, error.WrongParamCount);
+    const has_one_param = isFunction(.{ .params = .one(.{}) });
+    try has_one_param.expectError(fn () void, error.WrongParameterCount);
     try has_one_param.expect(fn (bool) void);
-    try has_one_param.expectError(fn (void, void) void, error.WrongParamCount);
-
-    const has_many_param = isFunction(.{ .param_count = .{ .least = 2 } });
-    try has_many_param.expectError(fn () void, error.TooFewParams);
-    try has_many_param.expectError(fn (void) void, error.TooFewParams);
-    try has_many_param.expect(fn (bool, bool, bool) void);
+    try has_one_param.expectError(fn (void, void) void, error.WrongParameterCount);
 
     const has_int_param = isFunction(.{ .params = .one(.{ .trait = .isInt(.{}) }) });
     try has_int_param.expect(fn (u8) void);
@@ -535,7 +530,7 @@ test hasMethod {
     }, error.IsComptimeInt);
     try has_method.expectError(struct {
         pub fn hello() void {}
-    }, error.TooFewParams);
+    }, error.NoParam);
     try has_method.expectError(struct {
         pub fn hello(_: void) void {}
     }, error.NoSelf);
@@ -666,7 +661,7 @@ test match {
     const match_fn_any_int_to_void = match(fn (matching.Anytype, matching.AnyTrait(.isInt(.{}))) void);
     try match_fn_any_int_to_void.expect(fn (void, i8) void);
     try match_fn_any_int_to_void.expect(fn (*const u8, usize) void);
-    try match_fn_any_int_to_void.expectError(fn ([]u16, isize, u32) void, error.WrongParamCount);
+    try match_fn_any_int_to_void.expectError(fn ([]u16, isize, u32) void, error.WrongParameterCount);
     try match_fn_any_int_to_void.expectError(fn (u8, u8) i32, error.WrongType);
     try match_fn_any_int_to_void.expectError(fn (void, ?u8) void, error.IsOptional);
 

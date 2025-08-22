@@ -121,7 +121,7 @@ fn ofUserDefined(comptime T: type) []const u8 {
 
                 upper_index = iter.i;
                 lower_index = iter.i;
-                new = new ++ "...)";
+                new = new ++ "_)";
             },
             // there's a weird character
             else => return old,
@@ -153,14 +153,16 @@ fn ofFunction(comptime function: std.builtin.Type.Fn, comptime o: Options) []con
 
         for (function.params, 1..) |param, i| {
             const param_name = if (param.is_generic)
-                "..?"
+                "[generic]"
             else if (param.is_noalias)
-                "noalias " ++ of(param.type.?)
+                "noalias " ++ of(param.type.?, o)
             else
                 of(param.type.?, o);
 
             name = name ++ param_name ++ if (i == function.params.len) "" else ", ";
         }
+
+        if (function.is_var_args) name = name ++ if (function.params.len == 0) "..." else ", ...";
 
         name = name ++ ") " ++ if (function.calling_convention == .@"inline" or
             function.calling_convention == .auto or
@@ -174,34 +176,41 @@ fn ofFunction(comptime function: std.builtin.Type.Fn, comptime o: Options) []con
             if (function.return_type) |return_type|
                 of(return_type, o)
             else
-                "..?";
+                "[generic]";
 
         return name;
     }
 }
 
 fn ofPointer(comptime pointer: std.builtin.Type.Pointer, comptime o: Options) []const u8 {
-    return if (o.sentinel) switch (pointer.size) {
-        .c => if (pointer.sentinel()) |sentinel| z.fmt("[*c:{}]", .{sentinel}) else "[*c]",
-        .many => if (pointer.sentinel()) |sentinel| z.fmt("[*:{}]", .{sentinel}) else "[*]",
-        .slice => if (pointer.sentinel()) |sentinel| z.fmt("[:{}]", .{sentinel}) else "[]",
-        .one => "*",
-    } else switch (pointer.size) {
-        .c => if (pointer.sentinel_ptr) |_| "[*c:_]" else "[*c]",
-        .many => if (pointer.sentinel_ptr) |_| "[*:_]" else "[*]",
-        .slice => if (pointer.sentinel_ptr) |_| "[:_]" else "[]",
-        .one => "*",
-    } ++
-        (if (pointer.is_allowzero) "allowzero " else "") ++
-        (if (pointer.alignment != @alignOf(pointer.child)) switch (o.alignment) {
+    comptime {
+        var name: []const u8 = if (o.sentinel) switch (pointer.size) {
+            .c => if (pointer.sentinel()) |sentinel| z.fmt("[*c:{}]", .{sentinel}) else "[*c]",
+            .many => if (pointer.sentinel()) |sentinel| z.fmt("[*:{}]", .{sentinel}) else "[*]",
+            .slice => if (pointer.sentinel()) |sentinel| z.fmt("[:{}]", .{sentinel}) else "[]",
+            .one => "*",
+        } else switch (pointer.size) {
+            .c => if (pointer.sentinel_ptr) |_| "[*c:_]" else "[*c]",
+            .many => if (pointer.sentinel_ptr) |_| "[*:_]" else "[*]",
+            .slice => if (pointer.sentinel_ptr) |_| "[:_]" else "[]",
+            .one => "*",
+        };
+
+        if (pointer.is_allowzero) name = name ++ "allowzero ";
+        if (pointer.alignment != @alignOf(pointer.child)) name = name ++ switch (o.alignment) {
             true => z.fmt("align({}) ", .{pointer.alignment}),
             false => "align(_) ",
-        } else "") ++
-        (if (pointer.address_space != .generic) switch (o.address_space) {
+        };
+
+        if (pointer.address_space != .generic) name = name ++ switch (o.address_space) {
             true => z.fmt("addrspace(.{t})", .{pointer.address_space}),
             false => "addrspce(_) ",
-        } else "") ++
-        (if (pointer.is_const) "const " else "") ++
-        (if (pointer.is_volatile) "volatile " else "") ++
-        of(pointer.child, o);
+        };
+
+        if (pointer.is_const) name = name ++ "const ";
+        if (pointer.is_volatile) name = name ++ "volatile ";
+
+        name = name ++ of(pointer.child, o);
+        return name;
+    }
 }

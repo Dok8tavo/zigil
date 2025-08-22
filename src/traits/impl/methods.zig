@@ -1,5 +1,6 @@
 const functions = @import("functions.zig");
 const std = @import("std");
+const type_name = @import("../type_name.zig");
 const z = @import("../../root.zig");
 
 pub const Options = struct {
@@ -7,7 +8,6 @@ pub const Options = struct {
     is_var_args: ?bool = null,
     is_generic: ?bool = null,
     return_type: functions.Options.Return = .{},
-    other_param_count: @import("count.zig").Count = .least_items,
     other_params: functions.Options.Params = .no_requirement,
     self: Self = .{},
 
@@ -27,26 +27,27 @@ pub fn has(comptime T: type, comptime name: []const u8, comptime o: Options) z.T
             z.fmt("The type must have a \"{s}\" method.", .{name}),
         );
 
-        const self_param = functions.Options.Param{
+        const self_param = &[_]functions.Options.Param{.{
             .is_generic = if (o.self.allow_anytype) null else false,
-        };
+        }};
 
         if (r.propagateFail(T, .hasDecl(name, .{ .of_type_which = .isFunction(.{
             .calling_convention = o.calling_convention,
-            .is_var_args = o.is_var_args,
+            .is_variadic = o.is_var_args,
             .is_generic = o.is_generic,
-            .param_count = switch (o.other_param_count) {
-                .exact_items, .least_items => o.other_param_count,
-                .least => |least| .{ .least = least + 1 },
-                .exact => |exact| .{ .exact = exact + 1 },
-            },
             .return_type = o.return_type,
-            .params = if (o.other_params.slice) |other_params| .many(
-                &[_]functions.Options.Param{self_param} ++ other_params,
-            ) else .one(self_param),
+            .params = if (o.other_params.slice) |slice| .many(self_param ++ slice) else .no_requirement,
         }) }), .{})) |fail| return fail;
 
-        if (@typeInfo(@TypeOf(@field(T, name))).@"fn".params[0].type) |Self| switch (Self) {
+        const Method = @TypeOf(@field(T, name));
+        const info = @typeInfo(Method).@"fn";
+
+        if (info.params.len == 0) return r.failWith(.{
+            .@"error" = error.NoParam,
+            .expect = "The method must take at least the self parameter.",
+        });
+
+        if (info.params[0].type) |Self| switch (Self) {
             T => if (!o.self.allow_value) return r.failWith(.{
                 .@"error" = error.PassByValue,
                 .option = "self-disallow-value",
@@ -64,11 +65,8 @@ pub fn has(comptime T: type, comptime name: []const u8, comptime o: Options) z.T
             }),
             else => return r.failWith(.{
                 .@"error" = error.NoSelf,
-                .expect = z.fmt(
-                    "The type of the first parameter must be `{s}` or a pointer to one.",
-                    .{@typeName(T)},
-                ),
-                .actual = z.fmt("The type of the first parameter is `{s}`.", .{@typeName(Self)}),
+                .expect = "The first parameter must be `" ++ type_name.of(T, .min) ++ "` or a pointer to one.",
+                .actual = "The first parameter is `" ++ type_name.of(Self, .min) ++ "`.",
             }),
         };
 

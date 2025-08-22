@@ -4,6 +4,7 @@ pub const @"is-enum" = @import("trait/is_enum.zig");
 pub const @"is-error-set" = @import("trait/is_error_set.zig");
 pub const @"is-error-union" = @import("trait/is_error_union.zig");
 pub const @"is-float" = @import("trait/is_float.zig");
+pub const @"is-function" = @import("trait/is_function.zig");
 pub const @"is-kind" = @import("trait/is_kind.zig");
 pub const @"is-optional" = @import("trait/is_optional.zig");
 pub const @"is-struct" = @import("trait/is_struct.zig");

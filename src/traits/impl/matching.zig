@@ -1,7 +1,8 @@
 const z = @import("../../root.zig");
 
-pub const Id = @TypeOf(.enum_literal);
+const ebq_factor = 100_000;
 
+pub const Id = @TypeOf(.enum_literal);
 pub const Anytype = Any(null, .no_trait);
 
 pub fn AnyId(comptime id: ?Id) type {
@@ -174,9 +175,8 @@ pub fn matchFn(comptime T: type, comptime Fn: type, comptime pairs: *Pairs) z.Tr
 
         const match_trait = z.Trait.isFunction(.{
             .calling_convention = expect_info.calling_convention,
-            .is_var_args = expect_info.is_var_args,
+            .is_variadic = expect_info.is_var_args,
             .is_generic = false,
-            .param_count = .{ .exact = expect_info.params.len },
             .params = .many(params),
         });
 
@@ -184,6 +184,8 @@ pub fn matchFn(comptime T: type, comptime Fn: type, comptime pairs: *Pairs) z.Tr
             return fail;
 
         const actual_info = @typeInfo(T).@"fn";
+
+        @setEvalBranchQuota(expect_info.params.len * ebq_factor);
 
         for (expect_info.params, actual_info.params) |expect_param, actual_param|
             if (r.propagateFailResult(uMatchT2(actual_param.type.?, expect_param.type.?, pairs), .{})) |fail|
@@ -222,6 +224,8 @@ pub fn matchTuple(comptime T: type, comptime Tuple: type, comptime pairs: *Pairs
             .expect = z.fmt("The tuple must have {} fields.", .{expect_info.fields.len}),
             .actual = z.fmt("The tuple has {} fields.", .{actual_info.fields.len}),
         });
+
+        @setEvalBranchQuota(expect_info.fields.len * ebq_factor);
 
         for (expect_info.fields, actual_info.fields) |expect_field, actual_field|
             if (r.propagateFailResult(uMatchT2(actual_field.type, expect_field.type, pairs), .{})) |fail|
