@@ -1,37 +1,73 @@
 const alignment = @import("alignment.zig");
-const containers = @import("containers.zig");
+const type_name = @import("../type_name.zig");
 const std = @import("std");
 const z = @import("../../root.zig");
 
 pub const Options = struct {
-    is_tagged: ?bool = null,
-    tag: z.Trait = .no_trait,
-    layout: containers.AllowLayout = .all,
-    variants: Variants = .no_requirement,
-    variant_count: Count = .least_items,
+    layout: AllowLayout = .any,
+    fields: Fields = .no_requirement,
 
-    pub const Count = @import("count.zig").Count;
+    pub const Fields = @import("Fields.zig");
 
-    pub const Variants = struct {
-        slice: ?[]const Variant = null,
+    pub const AllowLayout = union(enum) {
+        all: z.Trait,
+        auto: z.Trait,
+        @"extern",
+        @"packed",
+        @"not-auto",
+        @"not-extern": z.Trait,
+        @"not-packed": z.Trait,
 
-        pub const no_requirement = Variants{};
+        pub const any = AllowLayout{ .all = .no_trait };
 
-        pub fn one(comptime field: Variant) Variants {
-            comptime return Variants{ .slice = &[_]Variant{field} };
+        pub fn expect(al: AllowLayout) []const u8 {
+            return switch (al) {
+                .all => "The union can have any layout.",
+                .auto => "The union must have the auto layout.",
+                .@"extern" => "The union must have the extern layout.",
+                .@"packed" => "The union must have the packed layout.",
+                .@"not-auto" => "The union can't have the auto layout.",
+                .@"not-extern" => "The union can't have the extern layout.",
+                .@"not-packed" => "The union can't have the packed layout.",
+            };
         }
 
-        pub fn many(comptime fields: []const Variant) Variants {
-            comptime return Variants{ .slice = fields };
+        pub fn only(cl: std.builtin.Type.ContainerLayout) AllowLayout {
+            return switch (cl) {
+                .auto => .{ .auto = .no_trait },
+                .@"extern" => .@"extern",
+                .@"packed" => .@"packed",
+            };
         }
-    };
 
-    pub const Variant = struct {
-        alignment: ?alignment.Other = null,
-        is_comptime: ?bool = null,
-        name: []const u8,
-        trait: z.Trait = .no_trait,
-        has_default: ?bool = null,
+        pub fn not(cl: std.builtin.Type.ContainerLayout) AllowLayout {
+            return switch (cl) {
+                .auto => .@"not-auto",
+                .@"extern" => .{ .@"not-extern" = .no_trait },
+                .@"packed" => .{ .@"not-packed" = .no_trait },
+            };
+        }
+
+        pub fn hasAuto(al: AllowLayout) ?z.Trait {
+            return switch (al) {
+                .all, .auto, .@"not-packed", .@"not-extern" => |trait| trait,
+                else => null,
+            };
+        }
+
+        pub fn hasExtern(al: AllowLayout) bool {
+            return switch (al) {
+                .all, .@"extern", .@"not-packed", .@"not-auto" => true,
+                else => false,
+            };
+        }
+
+        pub fn hasPacked(al: AllowLayout) bool {
+            return switch (al) {
+                .all, .@"packed", .@"not-auto", .@"not-extern" => true,
+                else => false,
+            };
+        }
     };
 };
 
@@ -44,73 +80,35 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
 
         const info = @typeInfo(T).@"union";
 
-        if (o.is_tagged) |is_tagged| if ((info.tag_type != null) != is_tagged) return r.failWith(.{
-            .@"error" = if (is_tagged) error.IsNotTagged else error.IsTagged,
-            .expect = z.fmt("The type {s} be a tagged union.", .{if (is_tagged) "must" else "can't"}),
-            .actual = z.fmt("The type is {s}.", .{if (is_tagged) "a bare struct" else "a tagged union"}),
-            .option = z.fmt("{s}tag", .{if (is_tagged) "" else "no-"}),
-        });
-
-        if (info.tag_type) |Tag| if (r.propagateFail(Tag, o.tag, .{
-            .option = .fmtOne("tag => {s}", .trait),
-            .expect = .fmtOne("The union's tag must satisfy the trait `{s}`.", .trait),
-        })) |fail| return fail;
-
-        if (!o.layout.allows(info.layout)) return r.failWith(.{
-            .@"error" = error.ForbiddenLayout,
-            .expect = z.fmt("The union can't use the `{s}` layout.", .{@tagName(info.layout)}),
-            .option = z.fmt("forbid-layout[{s}]", .{@tagName(info.layout)}),
-            .actual = z.fmt("The union layout is `{s}`", .{@tagName(info.layout)}),
-            // TODO: .repair  = "layout suggestion",
-        });
-
-        variants_count: switch (o.variant_count) {
-            .exact_items => if (o.variants.slice) |variants| continue :variants_count .{ .exact = variants.len },
-            .least_items => if (o.variants.slice) |variants| continue :variants_count .{ .least = variants.len },
-            .exact => |exact| if (info.fields.len != exact) return r.failWith(.{
-                .@"error" = error.WrongVariantCount,
-                .option = z.fmt("variant-count[=={}]", .{exact}),
-                .expect = z.fmt("The variant count must be exactly {}.", .{exact}),
-                .actual = z.fmt("The variant count is {}.", .{info.fields.len}),
+        switch (info.layout) {
+            .auto => if (o.layout.hasAuto()) |trait| {
+                if (info.tag_type) |Tag| if (r.propagateFail(Tag, trait, .{
+                    .expect = .fmtOne("The tag `" ++ type_name.of(Tag, .min) ++
+                        "` must satisfy the trait `{s}`.", .trait),
+                    .option = .fmtOne("tag => {s}", .trait),
+                })) |fail| return fail;
+            } else return r.failWith(.{
+                .@"error" = error.LayoutIsAuto,
+                .option = @tagName(o.layout),
+                .expect = o.layout.expect(),
+                .actual = "The union has the auto layout,",
             }),
-            .least => |least| if (info.fields.len < least) return r.failWith(.{
-                .@"error" = error.NotEnoughVariants,
-                .option = z.fmt("variant-count[<={}]", .{least}),
-                .expect = z.fmt("There must be at least {} variants.", .{least}),
-                .actual = z.fmt("The variant count is {}.", .{info.fields.len}),
+            .@"extern" => if (!o.layout.hasExtern()) return r.failWith(.{
+                .@"error" = error.LayoutIsExtern,
+                .option = @tagName(o.layout),
+                .expect = o.layout.expect(),
+                .actual = "The union has the extern layout.",
+            }),
+            .@"packed" => if (!o.layout.hasPacked()) return r.failWith(.{
+                .@"error" = error.LayoutIsPacked,
+                .option = @tagName(o.layout),
+                .expect = o.layout.expect(),
+                .actual = "The union has the packed layout.",
             }),
         }
 
-        if (o.variants.slice) |variants| for (variants) |expect| {
-            const actual: std.builtin.Type.UnionField = for (info.fields) |variant| {
-                if (z.eql(u8, variant.name, expect.name)) break variant;
-            } else return r.failWith(.{
-                .@"error" = error.MissingVariant,
-                .expect = z.fmt("The union type must have a variant named \"{s}\".", .{expect.name}),
-                .option = z.fmt("has-variant[\"{s}\"]", .{expect.name}),
-            });
-
-            if (r.propagateFail(actual.type, expect.trait, .{
-                .option = .fmtOne(z.fmt("has-variant[\"{s}\" => {{s}}]", .{actual.name}), .trait),
-                .expect = .fmtOne(z.fmt(
-                    "The type of the variant \"{s}\" must satisfy the trait `{{s}}`.",
-                    .{actual.name},
-                ), .trait),
-            })) |fail| return fail;
-
-            if (expect.alignment) |expect_alignment| {
-                if (r.propagateFailResult(expect_alignment.result(actual.type, actual.alignment), .{
-                    .option = z.fmt(
-                        "alignment[\"{s}\", {s}]",
-                        .{ actual.name, expect_alignment.optionName() },
-                    ),
-                    .expect = z.fmt(
-                        "The alignment of the variant \"{s}\" must satisfy the given condition.",
-                        .{actual.name},
-                    ),
-                })) |fail| return fail;
-            }
-        };
+        if (o.fields.propagateFail(.@"union", info, r)) |fail|
+            return fail;
 
         return r;
     }

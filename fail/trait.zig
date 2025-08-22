@@ -8,4 +8,5 @@ pub const isKind = @import("trait/is_kind.zig");
 pub const isOptional = @import("trait/is_optional.zig");
 pub const isStruct = @import("trait/is_struct.zig");
 pub const isTuple = @import("trait/is_tuple.zig");
+pub const isUnion = @import("trait/is_union.zig");
 pub const isVector = @import("trait/is_vector.zig");

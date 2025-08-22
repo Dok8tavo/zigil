@@ -376,33 +376,40 @@ test isUnion {
 
     const is_auto = isUnion(.{ .layout = .only(.auto) });
     try is_auto.expect(union {});
-    try is_auto.expectError(packed union {}, error.ForbiddenLayout);
+    try is_auto.expectError(packed union {}, error.LayoutIsPacked);
 
-    try is_auto.expectError(extern union {}, error.ForbiddenLayout);
+    try is_auto.expectError(extern union {}, error.LayoutIsExtern);
 
-    const is_signed = isUnion(.{ .tag = .isEnum(.{ .tag = .isInt(.{ .signed = true }) }) });
+    const is_signed = isUnion(.{
+        .layout = .{
+            .auto = .isEnum(.{
+                .tag = .isInt(.{ .signed = true }),
+            }),
+        },
+    });
     // unions without variants always have a `u0` as a tag.
     try is_signed.expect(union(enum(i8)) { variant });
     try is_signed.expectError(union(enum(u8)) { variant }, error.IsUnsignedInt);
 
-    const has_variant = isUnion(.{ .variants = .one(.{ .name = "hello" }) });
+    const has_variant = isUnion(.{ .fields = .one("hello", .{}) });
     try has_variant.expect(union { hello: void });
 
-    const has_variant_with = isUnion(.{ .variants = .one(.{ .name = "hello", .trait = .is(u8) }) });
+    const has_variant_with = isUnion(.{
+        .fields = .one("hello", .{
+            .trait = .is(u8),
+        }),
+    });
     try has_variant_with.expect(union { hello: u8 });
+    try has_variant_with.expectError(union { hello: i8 }, error.WrongType);
 
-    const has_variants = isUnion(.{ .variants = .many(&.{ .{ .name = "hello" }, .{ .name = "goodbye" } }) });
+    const has_variants = isUnion(.{
+        .fields = .atLeast(.{
+            .hello = .{},
+            .goodbye = .{},
+        }),
+    });
     try has_variants.expect(union(enum) { hello, goodbye });
-
-    const has_least_variants = isUnion(.{ .variant_count = .{ .least = 4 } });
-    try has_least_variants.expectError(union(enum) { a, b, c }, error.NotEnoughVariants);
-    try has_least_variants.expect(union(enum) { a, b, c, d });
-    try has_least_variants.expect(union(enum) { a, b, c, d, e });
-
-    const has_exact_variants = isUnion(.{ .variant_count = .{ .exact = 4 } });
-    try has_exact_variants.expectError(union(enum) { a, b, c }, error.WrongVariantCount);
-    try has_exact_variants.expect(union(enum) { a, b, c, d });
-    try has_exact_variants.expectError(union(enum) { a, b, c, d, e }, error.WrongVariantCount);
+    try has_variants.expectError(union(enum) { hello, au_revoir }, error.MissingField);
 }
 
 const function = @import("impl/functions.zig");
