@@ -6,4 +6,6 @@ pub const isErrorUnion = @import("trait/is_error_union.zig");
 pub const isFloat = @import("trait/is_float.zig");
 pub const isKind = @import("trait/is_kind.zig");
 pub const isOptional = @import("trait/is_optional.zig");
+pub const isStruct = @import("trait/is_struct.zig");
+pub const isTuple = @import("trait/is_tuple.zig");
 pub const isVector = @import("trait/is_vector.zig");

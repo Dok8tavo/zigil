@@ -1,51 +1,125 @@
 const alignment = @import("alignment.zig");
-const containers = @import("containers.zig");
 const std = @import("std");
 const z = @import("../../root.zig");
 
 pub const Options = struct {
-    is_tuple: ?bool = null,
-    layout: containers.AllowLayout = .all,
-    backing_integer: BackingInteger = .no_requirement,
     fields: Fields = .no_requirement,
-    field_count: Count = .least_items,
+    layout: AllowLayout = .any,
 
-    pub const Count = @import("count.zig").Count;
+    pub const Fields = union(enum) {
+        exact: []const Field,
+        least: []const Field,
 
-    pub const BackingInteger = struct {
-        is_null: ?bool = null,
-        trait: z.Trait = .no_trait,
+        pub const no_requirement = Fields{ .least = &.{} };
 
-        pub const no_requirement = BackingInteger{};
+        pub fn exactly(
+            // TODO: use traits for this
+            comptime fields: anytype,
+        ) Fields {
+            return Fields{ .exact = sliceFrom(fields) };
+        }
 
-        pub fn must(comptime t: z.Trait) BackingInteger {
-            return BackingInteger{
-                .is_null = false,
-                .trait = t,
-            };
+        pub fn atLeast(
+            // TODO: use traits for this
+            comptime fields: anytype,
+        ) Fields {
+            return Fields{ .least = sliceFrom(fields) };
+        }
+
+        pub fn one(comptime name: []const u8, comptime field: Field.Anonymous) Fields {
+            return Fields{ .least = &[_]Field{.{
+                .name = name,
+                .alignment = field.alignment,
+                .has_default = field.has_default,
+                .is_comptime = field.is_comptime,
+                .trait = field.trait,
+            }} };
+        }
+
+        fn sliceFrom(
+            // TODO: use traits for this
+            comptime fields: anytype,
+        ) []const Field {
+            var s: []const Field = &.{};
+            for (@typeInfo(@TypeOf(fields)).@"struct".fields) |field| {
+                const name = field.name;
+                const unresolved = @field(fields, name);
+                const Unresolved = @TypeOf(unresolved);
+                s = s ++ &[_]Field{.{
+                    .alignment = if (@hasField(Unresolved, "alignment")) unresolved.alignment else null,
+                    .has_default = if (@hasField(Unresolved, "has_default")) unresolved.has_default else null,
+                    .is_comptime = if (@hasField(Unresolved, "is_comptime")) unresolved.is_comptime else null,
+                    .name = name,
+                    .trait = if (@hasField(Unresolved, "trait")) unresolved.trait else .no_trait,
+                }};
+            }
+
+            return s;
         }
     };
 
-    pub const Fields = struct {
-        slice: ?[]const Field = null,
+    pub const AllowLayout = union(enum) {
+        all: z.Trait,
+        auto,
+        @"not-packed",
+        @"extern",
+        @"not-auto": z.Trait,
+        @"packed": z.Trait,
+        @"not-extern": z.Trait,
 
-        pub const no_requirement = Fields{};
+        pub const any = AllowLayout{ .all = .no_trait };
 
-        pub fn one(comptime field: Field) Fields {
-            comptime return Fields{ .slice = &[_]Field{field} };
+        pub fn only(cl: std.builtin.Type.ContainerLayout) AllowLayout {
+            return switch (cl) {
+                .auto => .auto,
+                .@"extern" => .@"extern",
+                .@"packed" => .{ .@"packed" = .no_trait },
+            };
         }
 
-        pub fn many(comptime fields: []const Field) Fields {
-            comptime return Fields{ .slice = fields };
+        pub fn not(cl: std.builtin.Type.ContainerLayout) AllowLayout {
+            return switch (cl) {
+                .auto => .{ .@"not-auto" = .no_trait },
+                .@"extern" => .{ .@"not-extern" = .no_trait },
+                .@"packed" => .@"not-packed",
+            };
+        }
+
+        pub fn hasAuto(al: AllowLayout) bool {
+            return switch (al) {
+                .all, .auto, .@"not-packed", .@"not-extern" => true,
+                else => false,
+            };
+        }
+
+        pub fn hasExtern(al: AllowLayout) bool {
+            return switch (al) {
+                .all, .@"extern", .@"not-packed", .@"not-auto" => true,
+                else => false,
+            };
+        }
+
+        pub fn hasPacked(al: AllowLayout) ?z.Trait {
+            return switch (al) {
+                .all, .@"packed", .@"not-auto", .@"not-extern" => |trait| trait,
+                else => null,
+            };
         }
     };
 
     pub const Field = struct {
         alignment: ?alignment.Other = null,
+        has_default: ?bool = null,
         is_comptime: ?bool = null,
         name: []const u8,
         trait: z.Trait = .no_trait,
-        has_default: ?bool = null,
+
+        pub const Anonymous = struct {
+            alignment: ?alignment.Other = null,
+            has_default: ?bool = null,
+            is_comptime: ?bool = null,
+            trait: z.Trait = .no_trait,
+        };
     };
 };
 
@@ -58,104 +132,129 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
 
         const info = @typeInfo(T).@"struct";
 
-        if (o.is_tuple) |is_tuple| if (info.is_tuple != is_tuple) return r.failWith(.{
-            .@"error" = if (is_tuple) error.IsNotTuple else error.IsTuple,
-            .expect = z.fmt("The type {s} be a tuple.", .{if (is_tuple) "must" else "can't"}),
-            .actual = z.fmt("The type is {s}.", .{if (is_tuple) "a regular struct" else "a tuple"}),
-            .option = z.fmt("{s}tuple", .{if (is_tuple) "" else "no-"}),
+        if (info.is_tuple) return r.failWith(.{
+            .@"error" = error.IsTuple,
+            .expect = "The type must be a regular struct.",
+            .actual = "The type is a tuple.",
         });
 
-        if (!o.layout.allows(info.layout)) return r.failWith(.{
-            .@"error" = error.ForbiddenLayout,
-            .expect = z.fmt("The struct can't use the `{s}` layout.", .{@tagName(info.layout)}),
-            .option = z.fmt("forbid-layout[{s}]", .{@tagName(info.layout)}),
-            .actual = z.fmt("The struct layout is `{s}`", .{@tagName(info.layout)}),
-            // TODO: .repair  = "layout suggestion",
-        });
-
-        if (o.backing_integer.is_null) |is_null| if (is_null != (info.backing_integer == null)) return r.failWith(.{
-            .@"error" = if (is_null) error.NonNullBackingInteger else error.NullBackingInteger,
-            // TODO: better messaging
-            .expect = z.fmt("The struct {s} specify backing integer.", .{if (is_null) "can't" else "must"}),
-            .option = z.fmt("backing-integer-is{s}null", .{if (is_null) "-" else "-not-"}),
-            .actual = z.fmt(
-                "The struct's backing integer is `{s}`.",
-                .{if (info.backing_integer) |Bi| @typeName(Bi) else "null"},
-            ),
-        });
-
-        if (info.backing_integer) |Bi| if (r.propagateFail(Bi, o.backing_integer.trait, .{
-            .option = .fmtOne("backing-integer => {s}", .trait),
-            .expect = .fmtOne("The backing integer must satisfy the trait `{s}`.", .trait),
-        })) |fail| return fail;
-
-        field_count: switch (o.field_count) {
-            .exact_items => if (o.fields.slice) |slice| continue :field_count .{ .exact = slice.len },
-            .least_items => if (o.fields.slice) |slice| continue :field_count .{ .least = slice.len },
-            .exact => |exact| if (info.fields.len != exact) return r.failWith(.{
-                .@"error" = error.WrongFieldCount,
-                .option = z.fmt("field-count[=={}]", .{exact}),
-                .expect = z.fmt("The field count must be exactly {}.", .{exact}),
-                .actual = z.fmt("The field count is {}.", .{info.fields.len}),
+        switch (info.layout) {
+            .auto => if (!o.layout.hasAuto()) return r.failWith(.{
+                .@"error" = error.LayoutIsAuto,
+                .option = @tagName(o.layout),
+                .actual = "The layout of the struct is `.auto`.",
+                .expect = switch (o.layout) {
+                    .@"not-auto" => "The layout of the struct can't be `.auto`.",
+                    .@"extern" => "The layout of the struct must be `.extern`.",
+                    .@"packed" => "The layout of the struct must be `.packed`.",
+                    else => unreachable,
+                },
             }),
-            .least => |least| if (info.fields.len < least) return r.failWith(.{
-                .@"error" = error.NotEnoughFields,
-                .option = z.fmt("field-count[<={}]", .{least}),
-                .expect = z.fmt("There must be at least {} fields.", .{least}),
-                .actual = z.fmt("The field count is {}.", .{info.fields.len}),
+            .@"extern" => if (!o.layout.hasExtern()) return r.failWith(.{
+                .@"error" = error.LayoutIsExtern,
+                .option = @tagName(o.layout),
+                .actual = "The layout of the struct is `.extern`.",
+                .expect = switch (o.layout) {
+                    .@"not-extern" => "The layout of the struct can't be `.extern`.",
+                    .auto => "The layout of the struct must be `.auto`.",
+                    .@"packed" => "The layout of the struct must be `.packed`.",
+                    else => unreachable,
+                },
+            }),
+            .@"packed" => if (o.layout.hasPacked()) |backing_integer| {
+                if (r.propagateFail(info.backing_integer.?, backing_integer, .{
+                    .expect = .fmtOne("The backing integer of the packed struct must satisfy the trait `{s}`.", .trait),
+                    .option = .fmtOne("backing-integer => {s}", .trait),
+                })) |fail| return fail;
+            } else return r.failWith(.{
+                .@"error" = error.LayoutIsPacked,
+                .option = @tagName(o.layout),
+                .actual = "The layout of the struct is `.packed`.",
+                .expect = switch (o.layout) {
+                    .@"not-packed" => "The layout of the struct can't be `.packed`.",
+                    .auto => "The layout of the struct must be `.auto`.",
+                    .@"extern" => "The layout of the struct must be `.extern`.",
+                    else => unreachable,
+                },
             }),
         }
 
-        if (o.fields.slice) |fields| for (fields) |expect| {
-            const actual: std.builtin.Type.StructField = for (info.fields) |field| {
-                if (z.eql(u8, field.name, expect.name)) break field;
+        const field_count_is_exact, const expect_fields = switch (o.fields) {
+            .exact => |exact| .{ true, exact },
+            .least => |least| .{ false, least },
+        };
+
+        for (expect_fields) |expect| {
+            const actual = for (info.fields) |field| {
+                if (z.eql(u8, expect.name, field.name)) break field;
             } else return r.failWith(.{
                 .@"error" = error.MissingField,
-                .expect = z.fmt("The struct type must have a field named \"{s}\".", .{expect.name}),
-                .option = z.fmt("has-field[\"{s}\"]", .{expect.name}),
-            });
-
-            if (expect.has_default) |has_default| if (has_default != (actual.default_value_ptr != null)) return r.failWith(.{
-                .@"error" = if (has_default) error.HasNoDefault else error.HasDefault,
-                .option = z.fmt("has-field[{s}-default]", .{if (has_default) "with" else "wout"}),
-                .expect = z.fmt("The type {s} have a default value.", .{if (has_default) "must" else "can't"}),
-                .actual = z.fmt("The field has {s} default value.", .{if (has_default) "no" else "a"}),
-            });
-
-            if (expect.is_comptime) |is_comptime| if (is_comptime != actual.is_comptime) return r.failWith(.{
-                .@"error" = if (is_comptime) error.FieldIsRuntime else error.FieldIsComptime,
-                .expect = z.fmt(
-                    "The type's field \"{s}\" must be {s}.",
-                    .{ actual.name, if (is_comptime) "comptime" else "runtime" },
-                ),
-                .option = z.fmt(
-                    "has-field[\"{s}\", is-{s}]",
-                    .{ actual.name, if (is_comptime) "comptime" else "runtime" },
-                ),
-                .actual = z.fmt(
-                    "The type's field \"{s}\" is {s}.",
-                    .{if (is_comptime) "runtime" else "comptime"},
-                ),
+                .expect = "The struct must have a field named \"" ++ expect.name ++ "\".",
+                .option = "has-field[." ++ expect.name ++ "]",
             });
 
             if (r.propagateFail(actual.type, expect.trait, .{
-                .option = .fmtOne("has-field[\"" ++ actual.name ++ "\" => {s}", .trait),
+                .option = .fmtOne("has-field[." ++ expect.name ++ ", {s}]", .trait),
                 .expect = .fmtOne(
-                    "The type of the field \"" ++ actual.name ++ "\" must satisfy the trait `{s}`.",
+                    "The type of the field \"" ++ expect.name ++ "\" must satisfy the trait `{s}`.",
                     .trait,
                 ),
             })) |fail| return fail;
 
-            if (expect.alignment) |expect_align| {
-                if (r.propagateFailResult(expect_align.result(actual.type, actual.alignment), .{
-                    .option = z.fmt("alignment[{s}]", .{expect_align.optionName()}),
-                    .expect = z.fmt(
-                        "The alignment of the field \"{s}\" must satisfy the given condition.",
-                        .{actual.name},
-                    ),
-                })) |fail| return fail;
-            }
-        };
+            if (expect.alignment) |expect_alignment| if (r.propagateFailResult(
+                expect_alignment.result(actual.type, actual.alignment),
+                .{
+                    .option = expect_alignment.optionName(),
+                    .expect = "The alignment of the field \"" ++ expect.name ++
+                        "\" must be satisfy the condition `" ++ expect_alignment.optionName() ++ "`.",
+                },
+            )) |fail| return fail;
+
+            if (expect.is_comptime) |expect_is_comptime| switch (expect_is_comptime) {
+                true => if (!actual.is_comptime) return r.failWith(.{
+                    .@"error" = error.FieldIsRuntime,
+                    .expect = "The field \"" ++ expect.name ++ "\" must be comptime.",
+                    .option = "has-comptime-field[." ++ expect.name ++ "]",
+                }),
+                false => if (actual.is_comptime) return r.failWith(.{
+                    .@"error" = error.FieldIsComptime,
+                    .expect = "The field \"" ++ expect.name ++ "\" must be runtime.",
+                    .option = "has-runtime-field[." ++ expect.name ++ "]",
+                }),
+            };
+
+            if (expect.has_default) |expect_has_default| switch (expect_has_default) {
+                true => if (actual.default_value_ptr == null) return r.failWith(.{
+                    .@"error" = error.HasNoDefault,
+                    .expect = "The field \"" ++ expect.name ++ "\" must have a default value.",
+                    .option = "has-field-with-default[." ++ expect.name ++ "]",
+                }),
+                false => if (actual.default_value_ptr != null) return r.failWith(.{
+                    .@"error" = error.HasDefault,
+                    .expect = "The field \"" ++ expect.name ++ "\" can't have a default value.",
+                    .option = "has-field-wout-default[." ++ expect.name ++ "]",
+                }),
+            };
+        }
+
+        if (field_count_is_exact and expect_fields.len != info.fields.len) return r.failWith(.{
+            .@"error" = error.ExtraFields,
+            .expect = z.fmt(
+                "The struct must have exactly the {} fields given.",
+                .{expect_fields.len},
+            ),
+            .actual = for (info.fields) |actual_field| {
+                const actual_is_in_expect = for (expect_fields) |expect_field| {
+                    if (z.eql(u8, actual_field.name, expect_field.name)) break true;
+                } else false;
+
+                if (!actual_is_in_expect) break z.fmt(
+                    "The struct has {} extra fields, notably \"" ++ actual_field.name ++ "\".",
+                    .{info.fields.len - expect_fields.len},
+                );
+            } else unreachable,
+            .option = z.fmt("has-fields[{}]", .{expect_fields.len}),
+        });
 
         return r;
     }

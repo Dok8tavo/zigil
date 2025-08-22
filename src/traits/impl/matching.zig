@@ -200,7 +200,7 @@ pub fn matchFn(comptime T: type, comptime Fn: type, comptime pairs: *Pairs) z.Tr
 }
 
 pub fn matchTuple(comptime T: type, comptime Tuple: type, comptime pairs: *Pairs) z.Trait.Result {
-    const is_tuple = z.Trait.isStruct(.{ .is_tuple = true });
+    const is_tuple = z.Trait.isTuple(.{});
 
     comptime {
         is_tuple.assert(Tuple);
@@ -217,10 +217,11 @@ pub fn matchTuple(comptime T: type, comptime Tuple: type, comptime pairs: *Pairs
         const actual_info = @typeInfo(T).@"struct";
         const expect_info = @typeInfo(Tuple).@"struct";
 
-        const has_right_len = z.Trait.isStruct(.{ .field_count = .{ .exact = expect_info.fields.len } });
-
-        if (r.propagateFail(T, has_right_len, .{})) |fail|
-            return fail;
+        if (actual_info.fields.len != expect_info.fields.len) return r.failWith(.{
+            .@"error" = error.WrongFieldCount,
+            .expect = z.fmt("The tuple must have {} fields.", .{expect_info.fields.len}),
+            .actual = z.fmt("The tuple has {} fields.", .{actual_info.fields.len}),
+        });
 
         for (expect_info.fields, actual_info.fields) |expect_field, actual_field|
             if (r.propagateFailResult(uMatchT2(actual_field.type, expect_field.type, pairs), .{})) |fail|

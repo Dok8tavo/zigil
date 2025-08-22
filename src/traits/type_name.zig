@@ -68,6 +68,8 @@ fn ofUserDefined(comptime T: type) []const u8 {
         // idk if this is even possible but here we are...
         if (old.len == 0) return old;
 
+        @setEvalBranchQuota(old.len * 100);
+
         path: switch (old[upper_index]) {
             'a'...'z', 'A'...'Z', '_' => {
                 const not_identifier = loop: for (old[upper_index..], upper_index..) |byte, i| switch (byte) {

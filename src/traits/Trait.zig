@@ -311,46 +311,59 @@ pub fn isStruct(comptime o: structs.Options) z.Trait {
 }
 test isStruct {
     try isStruct(.{}).expect(struct {});
-    try isStruct(.{}).expect(struct { u8 });
     try isStruct(.{}).expect(struct { field: u8 });
-
-    const is_tuple = isStruct(.{ .is_tuple = true });
-    try is_tuple.expect(struct { u8 });
-    try is_tuple.expectError(struct { field: u8 }, error.IsNotTuple);
-    try is_tuple.expectError(struct {}, error.IsNotTuple);
-
-    const isnt_tuple = isStruct(.{ .is_tuple = false });
-    try isnt_tuple.expect(struct {});
-    try isnt_tuple.expect(struct { field: u8 });
-    try isnt_tuple.expectError(struct { u8 }, error.IsTuple);
 
     const is_auto = isStruct(.{ .layout = .only(.auto) });
     try is_auto.expect(struct {});
-    try is_auto.expectError(packed struct {}, error.ForbiddenLayout);
-    try is_auto.expectError(extern struct {}, error.ForbiddenLayout);
+    try is_auto.expectError(packed struct {}, error.LayoutIsPacked);
+    try is_auto.expectError(extern struct {}, error.LayoutIsExtern);
 
-    const is_signed = isStruct(.{ .backing_integer = .must(.isInt(.{ .signed = true })) });
+    const isnt_extern = isStruct(.{ .layout = .not(.@"extern") });
+    try isnt_extern.expect(struct {});
+    try isnt_extern.expect(packed struct {});
+    try isnt_extern.expectError(extern struct {}, error.LayoutIsExtern);
+
+    const is_signed = isStruct(.{ .layout = .{ .@"packed" = .isInt(.{ .signed = true }) } });
     try is_signed.expectError(packed struct(u0) {}, error.IsUnsignedInt);
     try is_signed.expect(packed struct(i0) {});
 
-    const has_field = isStruct(.{ .fields = .one(.{ .name = "hello" }) });
-    try has_field.expect(struct { hello: void });
+    const has_hello = isStruct(.{ .fields = .atLeast(.{ .hello = .{} }) });
+    try has_hello.expect(struct { hello: u8 });
+    try has_hello.expect(struct { hello: void, goodbye: void });
+    try has_hello.expectError(struct {}, error.MissingField);
 
-    const has_field_with = isStruct(.{ .fields = .one(.{ .name = "hello", .trait = .is(u8) }) });
-    try has_field_with.expect(struct { hello: u8 });
+    const has_pointer = isStruct(.{ .fields = .exactly(.{ .pointer = .{ .trait = z.Trait.isPointer(.{}) } }) });
+    try has_pointer.expect(struct { pointer: *u8 });
+    try has_pointer.expectError(struct { pointer: u8 }, error.IsInt);
+    try has_pointer.expectError(struct { pointer: *anyopaque, pointer2: *const anyopaque }, error.ExtraFields);
+}
 
-    const has_fields = isStruct(.{ .fields = .many(&.{ .{ .name = "0" }, .{ .name = "1" } }) });
-    try has_fields.expect(struct { u8, u16 });
+const tuples = @import("impl/tuples.zig");
+pub fn isTuple(comptime o: tuples.Options) z.Trait {
+    return fromResultFn(tuples.is, .{o});
+}
+test isTuple {
+    try isTuple(.{}).expect(struct { u8 });
+    try isTuple(.{}).expectError(struct {}, error.IsRegularStruct);
 
-    const has_least_fields = isStruct(.{ .field_count = .{ .least = 4 } });
-    try has_least_fields.expectError(struct { u8, u8, u8 }, error.NotEnoughFields);
-    try has_least_fields.expect(struct { u8, u8, u8, u8 });
-    try has_least_fields.expect(struct { u8, u8, u8, u8, u8 });
+    const is_tuple_of_ints = isTuple(.{ .all = .isInt(.{}) });
+    try is_tuple_of_ints.expect(struct { u8, i16, usize, c_int });
+    try is_tuple_of_ints.expectError(struct { u32, f32 }, error.IsFloat);
 
-    const has_exact_fields = isStruct(.{ .field_count = .{ .exact = 4 } });
-    try has_exact_fields.expectError(struct { u8, u8, u8 }, error.WrongFieldCount);
-    try has_exact_fields.expect(struct { u8, u8, u8, u8 });
-    try has_exact_fields.expectError(struct { u8, u8, u8, u8, u8 }, error.WrongFieldCount);
+    const is_tuple_6 = isTuple(.{ .size = .{ .exact = 6 } });
+    try is_tuple_6.expectError(struct { u8 }, error.WrongTupleSize);
+    try is_tuple_6.expect(struct { u1, u2, u3, u5, u4, u6 });
+    try is_tuple_6.expectError(struct { i1, u2, f16, c_int, u5, i6, f32 }, error.WrongTupleSize);
+
+    const is_tuple_2nd_int = isTuple(.{ .fields = .from(&.{
+        .skip(1),
+        .field(.{ .trait = .isInt(.{}) }),
+    }) });
+
+    try is_tuple_2nd_int.expect(struct { void, u8 });
+    try is_tuple_2nd_int.expect(struct { void, usize, void });
+    try is_tuple_2nd_int.expectError(struct { u8, void }, error.IsVoid);
+    try is_tuple_2nd_int.expectError(struct { usize }, error.MissingFields);
 }
 
 const unions = @import("impl/unions.zig");

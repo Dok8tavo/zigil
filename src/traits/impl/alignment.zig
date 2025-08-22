@@ -8,10 +8,10 @@ pub const Other = union(enum) {
 
     pub fn optionName(comptime o: Other) []const u8 {
         return switch (o) {
-            .custom => |n| z.fmt("{}", .{n}),
-            .natural => "natural",
-            .least_custom => |min| z.fmt("{}<=", .{min}),
-            .least_natural => "natural<=",
+            .custom => |n| z.fmt("align[{}]", .{n}),
+            .natural => "align[natural]",
+            .least_custom => |min| z.fmt("align[{}<=]", .{min}),
+            .least_natural => "align[natural<=]",
         };
     }
 
@@ -34,6 +34,7 @@ pub const Other = union(enum) {
     }
 
     pub fn result(comptime o: Other, comptime T: type, comptime alignment: u16) z.Trait.Result {
+        // TODO refactor this mess
         comptime {
             const r = z.Trait.Result.init(T, o.optionName(), "The alignment must be " ++ switch (o) {
                 .custom => |custom| z.fmt("exactly {}.", .{custom}),
@@ -46,7 +47,7 @@ pub const Other = union(enum) {
                 .@"error" = o.err(),
                 .actual = z.fmt("The alignment is {}{s}.", .{ alignment, switch (o) {
                     .natural => z.fmt(" instead of {}", .{@alignOf(T)}),
-                    .least_natural => z.fmt(" instead of at least {}.", .{@alignOf(T)}),
+                    .least_natural => z.fmt(" instead of at least {}", .{@alignOf(T)}),
                     else => "",
                 } }),
             });
