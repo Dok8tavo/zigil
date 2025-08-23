@@ -505,14 +505,14 @@ test hasDecl {
     // The `Trait` type has an `isKind` declaration.
     try hasDecl("isKind", .no_option).expect(Trait);
     // The `Trait` type has an `is` declaration that's a function.
-    try hasDecl("is", .{ .of_type_which = .isKind(.@"fn") }).expect(Trait);
+    try hasDecl("is", .{ .of_type = .isKind(.@"fn") }).expect(Trait);
     // The `Trait.Result` type has an `Info` declaration that's a container type.
-    try hasDecl("Info", .{ .is_type_which = .is_container }).expect(Trait.Result);
+    try hasDecl("Info", .{ .is_type = .is_container }).expect(Trait.Result);
 
     try hasDecl("Result", .{
-        .is_type_which = .hasDecl("Info", .{
-            .is_type_which = .hasDecl("format", .{
-                .of_type_which = .isKind(.@"fn"),
+        .is_type = .hasDecl("Info", .{
+            .is_type = .hasDecl("format", .{
+                .of_type = .isKind(.@"fn"),
             }),
         }),
     }).expect(Trait);

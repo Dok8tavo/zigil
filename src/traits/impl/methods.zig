@@ -31,7 +31,7 @@ pub fn has(comptime T: type, comptime name: []const u8, comptime o: Options) z.T
             .is_generic = if (o.self.allow_anytype) null else false,
         }};
 
-        if (r.propagateFail(T, .hasDecl(name, .{ .of_type_which = .isFunction(.{
+        if (r.propagateFail(T, .hasDecl(name, .{ .of_type = .isFunction(.{
             .calling_convention = o.calling_convention,
             .is_variadic = o.is_var_args,
             .is_generic = o.is_generic,

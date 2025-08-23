@@ -1,3 +1,4 @@
+pub const @"has-decl" = @import("trait/has_decl.zig");
 pub const is = @import("trait/is.zig");
 pub const @"is-array" = @import("trait/is_array.zig");
 pub const @"is-enum" = @import("trait/is_enum.zig");
