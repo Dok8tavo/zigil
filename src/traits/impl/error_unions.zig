@@ -1,3 +1,4 @@
+const kind = @import("kind.zig");
 const z = @import("../../root.zig");
 
 pub const Options = struct {
@@ -8,7 +9,8 @@ pub const Options = struct {
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
         const r = z.Trait.Result.init(T, "is-error-union", "The type must be an error union.");
-        if (r.propagateFail(T, .isKind(.error_union), .{})) |fail|
+
+        if (kind.propagateFail(r, T, .error_union)) |fail|
             return fail;
 
         const info = @typeInfo(T).error_union;

@@ -1,3 +1,4 @@
+const kind = @import("kind.zig");
 const std = @import("std");
 const z = @import("../../root.zig");
 
@@ -42,7 +43,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             "The type must be a function.",
         );
 
-        if (r.propagateFail(T, .isKind(.@"fn"), .{})) |fail|
+        if (kind.propagateFail(r, T, .@"fn")) |fail|
             return fail;
 
         const info = @typeInfo(T).@"fn";

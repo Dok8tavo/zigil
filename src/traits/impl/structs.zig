@@ -1,4 +1,5 @@
 const alignment = @import("alignment.zig");
+const kind = @import("kind.zig");
 const std = @import("std");
 const z = @import("../../root.zig");
 
@@ -74,7 +75,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
         const r = z.Trait.Result.init(T, "is-struct", "The type must be a struct.");
 
-        if (r.propagateFail(T, .isKind(.@"struct"), .{})) |fail|
+        if (kind.propagateFail(r, T, .@"struct")) |fail|
             return fail;
 
         const info = @typeInfo(T).@"struct";

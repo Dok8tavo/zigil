@@ -1,3 +1,4 @@
+const kind = @import("kind.zig");
 const std = @import("std");
 const z = @import("../../root.zig");
 
@@ -43,7 +44,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
         const r = z.Trait.Result.init(T, "is-error-set", "The type must be an error set.");
 
-        if (r.propagateFail(T, .isKind(.error_set), .{})) |fail|
+        if (kind.propagateFail(r, T, .error_set)) |fail|
             return fail;
 
         const info = @typeInfo(T).error_set;

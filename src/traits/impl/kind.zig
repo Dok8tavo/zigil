@@ -21,6 +21,23 @@ pub fn is(comptime T: type, comptime kind: std.builtin.TypeId) z.Trait.Result {
     }
 }
 
+pub fn propagateFail(
+    comptime r: z.Trait.Result,
+    comptime T: type,
+    comptime expect: std.builtin.TypeId,
+) ?z.Trait.Result {
+    comptime {
+        return switch (@typeInfo(T)) {
+            expect => null,
+            else => |actual| r.failWith(.{
+                .@"error" = @"error"(actual),
+                .expect = "The type must be " ++ denomination(expect) ++ ".",
+                .actual = "The type actual is " ++ denomination(actual) ++ ".",
+            }),
+        };
+    }
+}
+
 pub fn denomination(comptime kind: std.builtin.TypeId) []const u8 {
     comptime return switch (kind) {
         .type,

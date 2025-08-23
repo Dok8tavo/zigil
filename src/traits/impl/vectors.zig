@@ -40,7 +40,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
             "The type must be a vector.",
         );
 
-        if (r.propagateFail(T, .isKind(.vector), .{})) |fail|
+        if (kind.propagateFail(r, T, .vector)) |fail|
             return fail;
 
         const info = @typeInfo(T).vector;

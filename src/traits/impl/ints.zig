@@ -12,7 +12,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
         const r = z.Trait.Result.init(T, "is-int", "The type must be an integer.");
 
-        if (r.propagateFail(T, .isKind(.int), .{})) |fail|
+        if (kind.propagateFail(r, T, .int)) |fail|
             return fail;
 
         const info = @typeInfo(T).int;

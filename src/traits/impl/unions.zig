@@ -1,4 +1,5 @@
 const alignment = @import("alignment.zig");
+const kind = @import("kind.zig");
 const type_name = @import("../type_name.zig");
 const std = @import("std");
 const z = @import("../../root.zig");
@@ -75,7 +76,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
         const r = z.Trait.Result.init(T, "is-union", "The type must be a union.");
 
-        if (r.propagateFail(T, .isKind(.@"union"), .{})) |fail|
+        if (kind.propagateFail(r, T, .@"union")) |fail|
             return fail;
 
         const info = @typeInfo(T).@"union";

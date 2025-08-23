@@ -1,4 +1,5 @@
 const alignment = @import("alignment.zig");
+const kind = @import("kind.zig");
 const std = @import("std");
 const z = @import("../../root.zig");
 
@@ -20,7 +21,7 @@ pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
         const r = z.Trait.Result.init(T, "is-pointer", "The type is a pointer.");
 
-        if (r.propagateFail(T, .isKind(.pointer), .{})) |fail|
+        if (kind.propagateFail(r, T, .pointer)) |fail|
             return fail;
 
         const info = @typeInfo(T).pointer;

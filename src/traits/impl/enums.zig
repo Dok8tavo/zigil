@@ -1,3 +1,4 @@
+const kind = @import("kind.zig");
 const z = @import("../../root.zig");
 
 pub const Options = struct {
@@ -11,7 +12,8 @@ pub const Options = struct {
 pub fn is(comptime T: type, comptime o: Options) z.Trait.Result {
     comptime {
         const r = z.Trait.Result.init(T, "is-enum", "The type must be an enum.");
-        if (r.propagateFail(T, .isKind(.@"enum"), .{})) |fail|
+
+        if (kind.propagateFail(r, T, .@"enum")) |fail|
             return fail;
 
         const info = @typeInfo(T).@"enum";
