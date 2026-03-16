@@ -1,5 +1,11 @@
 # ⚡ Zigil
 
+## Deprecated
+
+I'm not working on this anymore. But I might make a replacement ;)
+
+---
+
 A metaprogramming module for Zig.
 
 ## Traits
